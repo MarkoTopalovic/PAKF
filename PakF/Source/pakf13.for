@@ -1,0 +1,860 @@
+C=========================================================================
+C=========================================================================
+      SUBROUTINE STEG2D(GNODE,NEL,ID,CORD,SKEF,
+     &TABF,ITFMAX,NBREL,TIME,KKORAK,VVREME,SPSIL,ALEVO,DESNO,SILE,ITER,
+     &NGPSIL,MAXA,IBRGT,NASLOV,GUSM,CC,AKT,IIZLAZ,AMI,
+     &INDAMI,BETA,TETAO,FB2,FB3,NUMZAD,NPT,NDIM,MAXSIL,JEDN,NWK,NET,
+     &NPER,NTABFT,NDES,IDPRIT,IFORM,PENALT,PRESS,NSTAC,INDAX,IUPWIN,
+     &PRES,VMESH,IALE,AF,INDEL,IPRESS,IPASS,PRITIS,AMASA,CPRESS)
+      IMPLICIT DOUBLE PRECISION(A-H,O-Z)
+
+C
+CE Subroutine RACU2D is used for 2D analysis
+CE It is used global loop per elements
+C
+
+C SAMO PRIVREMENO UBACEN COMMON ZA AKIRIN PRIMER 
+C STRUJANJA FLUIDA KROZ ELASTICNU CEV
+C      COMMON /AKIRA/ VOLT,PBALL,VSR,PBOX,DPRES
+      COMMON /AKIRA/ VOLT,PBALL,VSR,PBOX,PTUBE,POS(3)
+C      COMMON /NASL/ NASLOV
+C      COMMON /KONST/ GUSM,CC,AKT
+C      COMMON /TRENUT/ TT21,H,HP,ZVHX,ZVHY,HV2,HV3,ZVXT,ZVYT,DETJ,
+C     1DETJS,X,Y,FS2,FS3,ZVXV2,ZVYV3,ZVYV2,ZVXV3,TAU
+C      COMMON /TACNOS/ EPSTR,MAXIT
+C      COMMON /ULAZNI/ IULAZ,IIZLAZ
+C      COMMON /VISKOZ/ AMI,INDAMI
+C      COMMON /TEMPER/ BETA,TETAO,FB2,FB3
+C      COMMON /NUMNPT/ NUMZAD,NPT,NDIM,MAXSIL,JEDN,NWK,NET
+C      COMMON /VREPER/ NPER,NTABFT
+C      COMMON /NDESUK/ NDES,IDPRIT,IFORM
+C      COMMON /PENALL/ PENALT,PRESS
+C      COMMON /POCETN/ IPOCU,IPOCV,IPOCP,IPOCT,POCU,POCV,POCP,POCT
+C      COMMON /NESTAC/ NSTAC,NKOR,DT
+
+      CHARACTER*250NASLOV
+      DIMENSION GNODE(2,6,*),ALEVO(*),DESNO(*),SILE(*),CORD(3,*)
+      DIMENSION NEL(NDIM+1,*),ID(6,*),NGPSIL(8,*),MAXA(*)
+      DIMENSION SKEF(NDES,*)
+      DIMENSION TABF(2,NTABFT,*),ITFMAX(*)
+      DIMENSION SPSIL(2,*),PRES(3,*),VMESH(3,*)
+	DIMENSION IPRESS(*)
+	DIMENSION PRITIS(2,*)
+	DIMENSION AMASA(2,*)
+	DIMENSION CPRESS(4,2,*)
+
+      DIMENSION X(9),Y(9),LM2(4*9),TT21(4*9),TT210(4*9),TT21A(2*9)
+      DIMENSION R(3,3),S(3,3),W(3,3)
+C      DIMENSION R1(2),S1(2),W1(2)
+      DIMENSION H(9),ZVHX(9),ZVHY(9),HP(4),LM22(4*9)
+      DIMENSION AKVV2(9,9)
+      DIMENSION AKMIV2(9,9)
+      DIMENSION AKMIV3(9,9)
+      DIMENSION A12(9,9)
+      DIMENSION A21(9,9)
+      DIMENSION AKK(9,9)
+      DIMENSION AMV2(9,9)
+      DIMENSION C(9,9)
+      DIMENSION AJV2V2(9,9)
+      DIMENSION AJV3V3(9,9)
+      DIMENSION AJV2V3(9,9)
+      DIMENSION AJV3V2(9,9)
+      DIMENSION AKTV2(9,9)
+      DIMENSION AKTV3(9,9)
+      DIMENSION AKV2P(9,4)
+      DIMENSION AKV3P(9,4),AKV2P1(9,4)
+      DIMENSION AJK(9,9)
+      DIMENSION RS2(9)
+      DIMENSION RS3(9)
+      DIMENSION RB2(9)
+      DIMENSION RB3(9)
+      DIMENSION F31(31)
+      DIMENSION AKUAX(9,9),AKVAX(9,9),APAXIX(9,9),APAXIY(9,9)
+	DIMENSION AKU1(9,9),AKU_1(4,4)
+
+C Coorection for UPWIND, stability, Taylor, Oct, 21, 2004 Implemented
+	DIMENSION ATAYL(9,9)
+
+
+      IF (IPASS.EQ.0.OR.IPASS.EQ.3.OR.IPASS.EQ.4.OR.IPASS.EQ.5) THEN 
+	CALL NAMASA(GNODE,NEL,ID,CORD,SKEF,
+     &TABF,ITFMAX,NBREL,TIME,KKORAK,VVREME,SPSIL,ALEVO,DESNO,SILE,ITER,
+     &NGPSIL,MAXA,IBRGT,NASLOV,GUSM,CC,AKT,IIZLAZ,AMI,
+     &INDAMI,BETA,TETAO,FB2,FB3,NUMZAD,NPT,NDIM,MAXSIL,JEDN,NWK,NET,
+     &NPER,NTABFT,NDES,IDPRIT,IFORM,PENALT,PRESS,NSTAC,INDAX,IUPWIN,
+     &PRES,VMESH,IALE,AF,INDEL,IPRESS,IPASS,PRITIS,AMASA,1)
+
+	CALL NAMASA(GNODE,NEL,ID,CORD,SKEF,
+     &TABF,ITFMAX,NBREL,TIME,KKORAK,VVREME,SPSIL,ALEVO,DESNO,SILE,ITER,
+     &NGPSIL,MAXA,IBRGT,NASLOV,GUSM,CC,AKT,IIZLAZ,AMI,
+     &INDAMI,BETA,TETAO,FB2,FB3,NUMZAD,NPT,NDIM,MAXSIL,JEDN,NWK,NET,
+     &NPER,NTABFT,NDES,IDPRIT,IFORM,PENALT,PRESS,NSTAC,INDAX,IUPWIN,
+     &PRES,VMESH,IALE,AF,INDEL,IPRESS,IPASS,PRITIS,AMASA,2)
+	ENDIF
+
+
+      CALL CLEAR(SILE,NET)
+      IF (IPASS.EQ.0.OR.IPASS.EQ.3) THEN 
+
+      CALL FORMPR(GNODE,NEL,ID,CORD,SKEF,
+     &TABF,ITFMAX,NBREL,TIME,KKORAK,VVREME,SPSIL,ALEVO,DESNO,SILE,ITER,
+     &NGPSIL,MAXA,IBRGT,NASLOV,GUSM,CC,AKT,IIZLAZ,AMI,
+     &INDAMI,BETA,TETAO,FB2,FB3,NUMZAD,NPT,NDIM,MAXSIL,JEDN,NWK,NET,
+     &NPER,NTABFT,NDES,IDPRIT,IFORM,PENALT,PRESS,NSTAC,INDAX,IUPWIN,
+     &PRES,VMESH,IALE,AF,INDEL,IPRESS,IPASS,PRITIS,AMASA,CPRESS,NWK1)
+
+C	CALL RIGHTPR(GNODE,NEL,ID,CORD,SKEF,
+C     &TABF,ITFMAX,NBREL,TIME,KKORAK,VVREME,SPSIL,ALEVO,DESNO,SILE,ITER,
+C     &NGPSIL,MAXA,IBRGT,NASLOV,GUSM,CC,AKT,IIZLAZ,AMI,
+C     &INDAMI,BETA,TETAO,FB2,FB3,NUMZAD,NPT,NDIM,MAXSIL,JEDN,NWK,NET,
+C     &NPER,NTABFT,NDES,IDPRIT,IFORM,PENALT,PRESS,NSTAC,INDAX,IUPWIN,
+C     &PRES,VMESH,IALE,AF,INDEL,IPRESS,IPASS,PRITIS,AMASA,CPRESS,1)
+
+C	CALL RIGHTPR(GNODE,NEL,ID,CORD,SKEF,
+C     &TABF,ITFMAX,NBREL,TIME,KKORAK,VVREME,SPSIL,ALEVO,DESNO,SILE,ITER,
+C     &NGPSIL,MAXA,IBRGT,NASLOV,GUSM,CC,AKT,IIZLAZ,AMI,
+C     &INDAMI,BETA,TETAO,FB2,FB3,NUMZAD,NPT,NDIM,MAXSIL,JEDN,NWK,NET,
+C     &NPER,NTABFT,NDES,IDPRIT,IFORM,PENALT,PRESS,NSTAC,INDAX,IUPWIN,
+C     &PRES,VMESH,IALE,AF,INDEL,IPRESS,IPASS,PRITIS,AMASA,CPRESS,2)
+
+
+	ENDIF
+
+
+
+      R(3,1)=-0.7745966692415
+      R(3,2)=0.0
+      R(3,3)=0.77459666924148
+      S(3,1)=-0.7745966692415
+      S(3,2)=0.0
+      S(3,3)=0.77459666924148
+      W(3,1)=0.55555555555556
+      W(3,2)=0.88888888888889
+      W(3,3)=0.55555555555556
+
+
+      R(2,1)=0.57735026918963
+      R(2,2)=-0.5773502691896
+      S(2,1)=0.57735026918963
+      S(2,2)=-0.5773502691896
+      W(2,1)=1.000000000000000
+      W(2,2)=1.000000000000000
+
+      R(1,1)=0.0
+      S(1,1)=0.0
+      W(1,1)=2.0
+
+
+C GLAVNA PETLJA PO ELEMENTIMA
+C GLOBAL LOOP PER ELEMENTS
+C NBREL is counter of elements
+ 100  CONTINUE
+
+C      CALL CLEAR(ALEVO,NWK1)
+C       CALL CLEAR(DESNO,NWK1)
+       CALL CLEAR(SILE,JEDN1)
+
+
+	IF (IPASS.EQ.1.OR.IPASS.EQ.2) THEN
+	JEDN1=0
+	DO I=1,NPT
+	 IF (ID(IPASS,I).NE.0) JEDN1=JEDN1+1
+	ENDDO
+	CALL MAXATF1(MAXA,MHT,ID,NEL,NET,NDIM,JEDN1,NWK1,5,NDIM,IPASS)
+       CALL CLEAR(ALEVO,NWK1)
+       CALL CLEAR(DESNO,NWK1)
+       CALL CLEAR(SILE,JEDN1)
+	ENDIF
+
+
+C	IF (IPASS.EQ.3) THEN
+C      DO J=1,NPT/9-1
+C      DO I=1,9
+C	  GNODE(2,1,I+J*9)=GNODE(2,1,I)
+C	  GNODE(2,2,I+J*9)=GNODE(2,2,I)
+C	ENDDO
+C	ENDDO
+C	ENDIF
+
+
+
+
+      DO 400 NBREL=1,NET
+
+C TT21 is vector of unknowns values at element level
+C TT210 is vector of unknowns values at element level at start of time step
+
+      DO 125 I=1,4*NDIM
+      TT210(I)=0.D0
+      LM2(I)=0
+      LM22(I)=0
+ 125  TT21(I)=0.D0
+C=========================================================================
+      IF (IALE.EQ.1) THEN
+       DO I=1,NDIM
+        NODE=NEL(I,NBREL)
+        TT21A(I)=VMESH(1,NODE)
+        TT21A(I+NDIM)=VMESH(2,NODE)
+       ENDDO
+      ENDIF
+C=========================================================================
+      DO 130 KLM=1,NDIM
+      X(KLM)=CORD(1,NEL(KLM,NBREL))
+      Y(KLM)=CORD(2,NEL(KLM,NBREL))
+      LM2(KLM)=ID(1,NEL(KLM,NBREL))
+      LM2(KLM+NDIM)=ID(2,NEL(KLM,NBREL))
+      IF (KLM.LE.4) LM2(KLM+2*NDIM)=ID(4,NEL(KLM,NBREL))
+      LM2(KLM+2*NDIM+4)=ID(5,NEL(KLM,NBREL))
+ 130  CONTINUE
+C=======================================================================
+      DO 140 KLM=1,NDIM
+      DO 135 NR=1,2
+C      IF (ID(NR,NEL(KLM,NBREL)) .NE. 0) THEN
+      TT21(KLM+(NR-1)*NDIM)=GNODE(2,NR,NEL(KLM,NBREL))
+      TT210(KLM+(NR-1)*NDIM)=GNODE(1,NR,NEL(KLM,NBREL))
+C      ENDIF
+ 135  CONTINUE
+      IF (KLM.LE.4) THEN
+       TT21(KLM+2*NDIM)=GNODE(2,4,NEL(KLM,NBREL))
+       TT210(KLM+2*NDIM)=GNODE(1,4,NEL(KLM,NBREL))
+      ENDIF
+      TT21(KLM+2*NDIM+4)=GNODE(2,5,NEL(KLM,NBREL))
+      TT210(KLM+2*NDIM+4)=GNODE(1,5,NEL(KLM,NBREL))
+ 140  CONTINUE
+C
+C=======================================================================
+C      IF (NDIM.GT.4) THEN
+C      DO 145 NR=28,36
+C      TT210(NR-5)=TT210(NR)
+C 145  TT21(NR-5)=TT21(NR)
+C      ENDIF
+C=======================================================================
+      DO I=1,3*NDIM+4
+       IF(KKORAK.EQ.1.AND.ITER.EQ.1) TT210(I)=TT21(I)
+      ENDDO
+C=======================================================================
+C NUMZAD is number of prescribed values
+C
+C      DO 160 NR=1,NDIM
+C      DO 155 NZDT=1,NUMZAD
+C
+C TIMFUN is subroutine which determined values of function at currently 
+C time step (at the end of step)
+C
+C      IF(NEL(NR,NBREL).EQ.NZAD(1,NZDT)) THEN
+C       CALL TIMFUN (TABF,FK1,VVREME,ITFMAX(NZAD(3,NZDT)),NZAD(3,NZDT),
+C     &NTABFT,IIZLAZ)
+C========================================
+C SAMO PRIVREMENO UBACENO ZA AKIRIN PRIMER 
+C STRUJANJA FLUIDA KROZ ELASTICNU CEV
+C       FK1=PBALL
+C=========================================
+C      MESTO=NZAD(2,NZDT)
+C        IF (MESTO.EQ.4) THEN
+C        TT21(2*NDIM+4+NR)=ZADVRE(NZDT)*FK1
+C        ELSE
+C        TT21((MESTO-1)*NDIM+NR)=ZADVRE(NZDT)*FK1
+C        ENDIF
+C      ENDIF  
+C 155  CONTINUE
+C 160  CONTINUE
+C=======================================================================
+
+C=======================================================================
+C      CALL WRR(TT21,3*NDIM+4,'T211')
+      DO 163 K=1,NDIM
+      DO 162 N=1,NDIM
+      IF (N.LE.4) THEN
+      AKV2P(K,N)=0.D0
+      AKV3P(K,N)=0.D0
+      AKV2P1(K,N)=0.D0
+      ENDIF
+      AKVV2(K,N)=0.D0
+      APAXIX(K,N)=0.D0
+      APAXIY(K,N)=0.D0
+      AKUAX(K,N)=0.D0
+      AKVAX(K,N)=0.D0
+      AKTV2(K,N)=0.D0
+      AKTV3(K,N)=0.D0
+      AKMIV2(K,N)=0.D0
+      AKMIV3(K,N)=0.D0
+      A12(K,N)=0.D0
+      A21(K,N)=0.D0
+      AMV2(K,N)=0.D0
+      AJV2V2(K,N)=0.D0
+      AJV3V3(K,N)=0.D0
+      AJV2V3(K,N)=0.D0
+      AJV3V2(K,N)=0.D0
+      AKK(K,N)=0.D0
+      AJK(K,N)=0.D0
+	ATAYL(K,N)=0.D0
+	AKU1(K,N)=0.D0
+	AKU_1(K,N)=0.D0
+  162 CONTINUE
+C POVRSINSKE SILE I ZAPREMINSKE SILE:
+C SURFACE FORCES AND BODY FORCES
+       RS2(K)=0.D0
+       RS3(K)=0.D0
+       RB2(K)=0.D0
+       RB3(K)=0.D0
+  163 CONTINUE
+
+
+C===========================================================================
+
+C INTEGRACIJA U GAUSOVIM TACKAMA
+C integration per gauss points
+
+      DO 180 I=1,IBRGT
+      DO 170 J=1,IBRGT
+
+C subroutine FNTERP return to us interpolation functions...
+
+      CALL FNTERP(R(IBRGT,I),S(IBRGT,J),0,TT21,H,HP,ZVHX,ZVHY,HV2,
+     &HV3,ZVXT,ZVYT,DETJ,DETJS,X,Y,FS2,FS3,ZVXV2,ZVYV3,ZVYV2,ZVXV3,TAU,
+     &NUMZAD,NPT,NDIM,MAXSIL,JEDN,NWK,NET,AMI,INDAMI,PENALT,PRESS,INDAX,
+     &AKT,GUSM,IUPWIN,NBREL,IIZLAZ)
+       IF (IALE.EQ.1) CALL ALEHV(TT21,TT21A,HV2,HV3,NDIM,H)
+C       IF (IALE.EQ.1) CALL ALEHV4(TT21,TT21A,HV2,HV3,NDIM,H,ZVXV2,
+C     &ZVYV3,ZVYV2,ZVXV3,ZVHX,ZVHY)
+       CALL AXISYF(INDAX,DEBLJ,X,H,NDIM)
+
+      WDT=W(IBRGT,I)*W(IBRGT,J)*DETJ
+
+      IF (INDAMI.EQ.1) CALL NENJUT(ZVHX,ZVHY,TT210)
+      DO 165 K=1,NDIM
+      DO 164 N=1,NDIM
+      IF (INDAX.EQ.1) THEN
+      AKUAX(K,N)=AKUAX(K,N)-WDT*H(K)*(ZVHX(N)/DEBLJ-H(N)/(DEBLJ**2))*AMI
+      AKVAX(K,N)=AKVAX(K,N)-WDT*(H(K)*ZVHX(N)/DEBLJ)*AMI
+      ENDIF
+      AKVV2(K,N)=AKVV2(K,N)+WDT*((H(K)*HV2*ZVHX(N)+
+     1H(K)*HV3*ZVHY(N))*GUSM)
+      AKTV2(K,N)=AKTV2(K,N)+WDT*(H(K)*H(N)*ZVXT
+     1*GUSM*CC)
+      AKTV3(K,N)=AKTV3(K,N)+WDT*(H(K)*H(N)*ZVYT
+     1*GUSM*CC)
+      AKMIV2(K,N)=AKMIV2(K,N)+WDT*((ZVHX(K)*ZVHX(N)+
+     1ZVHY(K)*ZVHY(N))*AMI)
+      AKK(K,N)=AKK(K,N)+WDT*((ZVHX(K)*ZVHX(N)+
+     1ZVHY(K)*ZVHY(N))*AKT)
+      IF (INDAX.EQ.1) THEN
+       AKK(K,N)=AKK(K,N)-WDT*(H(K)*ZVHX(N)/DEBLJ)*AKT
+      ENDIF
+
+      AKMIV3(K,N)=AKMIV2(K,N)
+	AMV2(K,N)=AMV2(K,N)+WDT*H(K)*H(N)*GUSM
+      
+
+	
+      AJV2V2(K,N)=AJV2V2(K,N)+WDT*(H(K)*ZVXV2*H(N)*GUSM)
+      AJV3V3(K,N)=AJV3V3(K,N)+WDT*(H(K)*ZVYV3*H(N)*GUSM)
+      AJV2V3(K,N)=AJV2V3(K,N)+WDT*(H(K)*ZVYV2*H(N)*GUSM)
+      AJV3V2(K,N)=AJV3V2(K,N)+WDT*(H(K)*ZVXV3*H(N)*GUSM)
+      IF (N.LE.4.AND.PENALT.LT.1.D0) THEN
+C       AKV2P(K,N)=AKV2P(K,N)+WDT*(-ZVHX(K)*HP(N))
+C       AKV3P(K,N)=AKV3P(K,N)+WDT*(-ZVHY(K)*HP(N))
+      IF (INDAX.EQ.1) THEN
+       AKV2P1(K,N)=AKV2P1(K,N)+WDT*(-H(K)*HP(N)/DEBLJ)
+      ENDIF
+      ENDIF
+
+c      ATAYL(K,N)=ATAYL(K,N)+WDT*(ZVHX(K)*ZVHX(N)*HV2**2+
+c     1ZVHY(K)*ZVHY(N)*HV3**2)*GUSM*TIME/2.D0
+c      ATAYL(K,N)=ATAYL(K,N)+WDT*(ZVHX(K)*ZVHY(N)*HV2*HV3+
+c     1ZVHY(K)*ZVHX(N)*HV3*HV2)*GUSM*TIME/2.D0
+
+
+  164 CONTINUE
+       RB2(K)=RB2(K)+H(K)*GUSM*FB2*(1.D0+BETA*TETAO)*WDT
+       RB3(K)=RB3(K)+H(K)*GUSM*FB3*(1.D0+BETA*TETAO)*WDT
+C       RB2(K)=RB2(K)+H(K)*GUSM*FB2*(0.D0+BETA*TETAO)*WDT
+C       RB3(K)=RB3(K)+H(K)*GUSM*FB3*(0.D0+BETA*TETAO)*WDT
+  165 CONTINUE
+
+  170 CONTINUE
+  180 CONTINUE
+
+C===========================================================================
+C REDUKOVANA INTEGRACIJA CLANOVA SA PRITISKOM
+C reduced integration for pressure
+
+C==========================================================================
+C      DO  I=1,IBRGT-1
+C      DO  J=1,IBRGT-1
+C      CALL FNTERP(R(IBRGT-1,I),S(IBRGT-1,J),0,TT21,H,HP,ZVHX,ZVHY,HV2,
+C     &HV3,ZVXT,ZVYT,DETJ,DETJS,X,Y,FS2,FS3,ZVXV2,ZVYV3,ZVYV2,ZVXV3,TAU,
+C     &NUMZAD,NPT,NDIM,MAXSIL,JEDN,NWK,NET,AMI,INDAMI,PENALT,PRESS,INDAX)
+C       CALL AXISYF(INDAX,DEBLJ,X,H,NDIM)
+C      WDT=W(IBRGT-1,I)*W(IBRGT-1,J)*DETJ
+C
+C      DO  K=1,NDIM
+C       DO  N=1,NDIM
+C        IF (N.LE.4.AND.PENALT.LT.1.D0) THEN
+C         AKV2P(K,N)=AKV2P(K,N)+WDT*(-ZVHX(K)*HP(N))
+C         AKV3P(K,N)=AKV3P(K,N)+WDT*(-ZVHY(K)*HP(N))
+C          IF (INDAX.EQ.1) THEN
+C           AKV2P1(K,N)=AKV2P1(K,N)+WDT*(-H(K)*HP(N)/DEBLJ)
+C          ENDIF
+C        ENDIF
+C       ENDDO
+C      ENDDO
+C
+C      ENDDO
+C      ENDDO
+C==========================================================================
+C===========================================================================
+C REDUKOVANA INTEGRACIJA CLANOVA SA PENALTY FAKTOROM
+C reduced integration if penalty function is defined
+
+C      IF (PENALT.GT.0.D0) THEN
+      DO 200 I=1,IBRGT-1
+      DO 195 J=1,IBRGT-1
+      CALL FNTERP(R(IBRGT-1,I),S(IBRGT-1,J),0,TT21,H,HP,ZVHX,ZVHY,HV2,
+     &HV3,ZVXT,ZVYT,DETJ,DETJS,X,Y,FS2,FS3,ZVXV2,ZVYV3,ZVYV2,ZVXV3,TAU,
+     &NUMZAD,NPT,NDIM,MAXSIL,JEDN,NWK,NET,AMI,INDAMI,PENALT,PRESS,INDAX,
+     &AKT,GUSM,IUPWIN,NBREL,IIZLAZ)
+       CALL AXISYF(INDAX,DEBLJ,X,H,NDIM)
+C      WDT1=W(IBRGT-1,I)*W(IBRGT-1,J)*DETJ*DEBLJ
+      WDT=W(IBRGT-1,I)*W(IBRGT-1,J)*DETJ
+      DO 190 K=1,NDIM
+      DO 185 N=1,NDIM
+C      AKMIV2(K,N)=AKMIV2(K,N)+PENALT*ZVHX(K)*ZVHX(N)*WDT
+C      AKMIV3(K,N)=AKMIV3(K,N)+PENALT*ZVHY(K)*ZVHY(N)*WDT
+C      A12(K,N)=A12(K,N)+PENALT*ZVHX(K)*ZVHY(N)*WDT
+C      AJV2V3(K,N)=AJV2V3(K,N)+PENALT*ZVHX(K)*ZVHY(N)*WDT
+C      A21(K,N)=A21(K,N)+PENALT*ZVHY(K)*ZVHX(N)*WDT
+C      AJV3V2(K,N)=AJV3V2(K,N)+PENALT*ZVHY(K)*ZVHX(N)*WDT
+C       IF (INDAX.EQ.1) THEN
+C       APAXIX(K,N)=APAXIX(K,N)+PENALT*WDT*(ZVHX(K)*H(N)/DEBLJ)
+C       APAXIY(K,N)=APAXIY(K,N)+PENALT*WDT*(ZVHY(K)*H(N)/DEBLJ)
+C       ENDIF
+C      IF (N.LE.4.AND.PENALT.LT.1.D0) THEN
+      IF (N.LE.1) THEN
+C SIGN IS CHANGED BECAUSE fidap 
+C       AKV2P(K,N)=AKV2P(K,N)+WDT*(-ZVHX(K)*HP(N))
+C       AKV3P(K,N)=AKV3P(K,N)+WDT*(-ZVHY(K)*HP(N))
+       AKV2P(K,N)=AKV2P(K,N)+WDT*(ZVHX(K)*HP(N))
+       AKV3P(K,N)=AKV3P(K,N)+WDT*(ZVHY(K)*HP(N))
+      ENDIF
+C      IF (INDAX.EQ.1) THEN
+C       AKV2P1(K,N)=AKV2P1(K,N)+WDT*(-H(K)*HP(N)/DEBLJ)
+C      ENDIF
+  185 CONTINUE
+  190 CONTINUE
+  195 CONTINUE
+  200 CONTINUE
+C      ENDIF
+C===========================================================================
+
+C======================================================================= 
+C POVRSINSKE SILE
+C surface forces
+
+       INDX=0
+       INDY=0
+
+      DO 250 JBRPS=1,MAXSIL
+      IF (NBREL.EQ.NGPSIL(1,JBRPS)) THEN
+C       WRITE(IIZLAZ,*)'IND,ELEM',NGPSIL(4,JBRPS),NBREL
+        IF (PENALT.LE.1.D0) IBRGT=IBRGT+1
+C        INDX=NGPSIL(6,JBRPS)
+C        INDY=NGPSIL(7,JBRPS)
+
+C        IF (NGPSIL(4,JBRPS).EQ.0) THEN
+C        INDX=1
+C        INDY=1
+C        ELSE IF(NGPSIL(6,JBRPS).EQ.1) THEN
+C        INDX=1
+C        INDY=0
+C        ELSE IF(NGPSIL(7,JBRPS).EQ.1) THEN
+C        INDX=0
+C        INDY=1
+C        ENDIF
+
+       TTAU=0.D0
+       NPARAM=1
+       IF(NGPSIL(4,JBRPS).EQ.3) NPARAM=2
+       
+      NODE1=NGPSIL(2,JBRPS)
+      NODE2=NGPSIL(3,JBRPS)
+      N1=NEL(1,NBREL)
+      N2=NEL(2,NBREL)
+      N3=NEL(3,NBREL)
+      N4=NEL(4,NBREL)
+      DO 225 I=1,IBRGT-1
+      IF ((NODE1.EQ.N1 .AND. NODE2.EQ.N4).OR.
+     1(NODE1.EQ.N4 .AND. NODE2.EQ.N1)) THEN
+        CALL FNTERP(1.D0,S(IBRGT-1,I),NPARAM,TT21,H,HP,ZVHX,ZVHY,HV2,
+     &HV3,ZVXT,ZVYT,DETJ,DETJS,X,Y,FS2,FS3,ZVXV2,ZVYV3,ZVYV2,ZVXV3,TAU,
+     &NUMZAD,NPT,NDIM,MAXSIL,JEDN,NWK,NET,AMI,INDAMI,PENALT,PRESS,INDAX,
+     &AKT,GUSM,IUPWIN,NBREL,IIZLAZ)
+        GOTO 205
+      ENDIF 
+
+      IF ((NODE1.EQ.N2 .AND. NODE2.EQ.N3).OR.
+     1(NODE1.EQ.N3 .AND. NODE2.EQ.N2)) THEN
+      CALL FNTERP(-1.D0,S(IBRGT-1,I),NPARAM,TT21,H,HP,ZVHX,ZVHY,HV2,
+     &HV3,ZVXT,ZVYT,DETJ,DETJS,X,Y,FS2,FS3,ZVXV2,ZVYV3,ZVYV2,ZVXV3,TAU,
+     &NUMZAD,NPT,NDIM,MAXSIL,JEDN,NWK,NET,AMI,INDAMI,PENALT,PRESS,INDAX,
+     &AKT,GUSM,IUPWIN,NBREL,IIZLAZ)
+        GOTO 205
+      ENDIF 
+
+      IF ((NODE1.EQ.N1 .AND. NODE2.EQ.N2).OR.
+     1(NODE1.EQ.N2 .AND. NODE2.EQ.N1)) THEN
+      CALL FNTERP(R(IBRGT-1,I),1.D0,NPARAM,TT21,H,HP,ZVHX,ZVHY,HV2,
+     &HV3,ZVXT,ZVYT,DETJ,DETJS,X,Y,FS2,FS3,ZVXV2,ZVYV3,ZVYV2,ZVXV3,TAU,
+     &NUMZAD,NPT,NDIM,MAXSIL,JEDN,NWK,NET,AMI,INDAMI,PENALT,PRESS,INDAX,
+     &AKT,GUSM,IUPWIN,NBREL,IIZLAZ)
+        GOTO 205
+      ENDIF 
+
+
+      IF ((NODE1.EQ.N3 .AND. NODE2.EQ.N4).OR.
+     1(NODE1.EQ.N4 .AND. NODE2.EQ.N3)) THEN
+      CALL FNTERP(R(IBRGT-1,I),-1.D0,NPARAM,TT21,H,HP,ZVHX,ZVHY,HV2,
+     &HV3,ZVXT,ZVYT,DETJ,DETJS,X,Y,FS2,FS3,ZVXV2,ZVYV3,ZVYV2,ZVXV3,TAU,
+     &NUMZAD,NPT,NDIM,MAXSIL,JEDN,NWK,NET,AMI,INDAMI,PENALT,PRESS,INDAX,
+     &AKT,GUSM,IUPWIN,NBREL,IIZLAZ)
+        GOTO 205
+      ENDIF 
+
+
+ 205  CALL AXISYF(INDAX,DEBLJ,X,H,NDIM)
+C      WDT=W(IBRGT-1,I)*DETJS*DEBLJ
+      WDT=W(IBRGT-1,I)*DETJS
+      IF(NGPSIL(4,JBRPS).EQ.3) GOTO 207
+      DO 206 K=1,NDIM
+       RS2(K)=RS2(K)+WDT*(H(K)*FS2)*NGPSIL(4,JBRPS)
+       RS3(K)=RS3(K)+WDT*(H(K)*FS3)*NGPSIL(5,JBRPS)
+ 206  CONTINUE
+ 207   TTAU=TTAU+WDT*TAU
+C 207   WRITE(IIZLAZ,*)'NBREL= ',NBREL,'TAU= ',TAU
+ 225  CONTINUE
+
+C       IF(NGPSIL(4,JBRPS).EQ.3) THEN
+C        WRITE(IIZLAZ,*)'ELEM',NBREL,'TTAU',TTAU
+C       ENDIF
+
+
+      IF (PENALT.LE.1.D0) IBRGT=IBRGT-1
+      ENDIF
+ 250  CONTINUE
+
+C C matrix include heat conduction
+
+
+      DO 255 I=1,NDIM
+      DO 254 J=1,NDIM
+
+      C(I,J)=AMV2(I,J)*CC              
+C      AKK(I,J)=AKMIV2(I,J)*AKT/AMI
+      AJK(I,J)=AKVV2(I,J)*CC
+
+ 254  CONTINUE
+ 255  CONTINUE
+
+C=========================================================================
+C INCIJALIZACIJA MATRICE SKEF I F31
+      DO 260 I=1,NDES
+      DO 258 J=1,NDES
+      SKEF(I,J)=0.D0
+ 258  CONTINUE
+      F31(I)=0.D0
+ 260  CONTINUE
+C=========================================================================
+C=========================================================================
+C PAKOVANJE MATRICE C,Kk,Jk U MATRICU SKEF
+C SKEF is local stiffness matrix
+
+      DO K=1,NDIM
+	DO N=1,NDIM
+	  AKU1(K,N)=AMV2(K,N)/TIME+AKVV2(K,N)+AKMIV2(K,N)
+	  AKU_1(K,K)=AKU_1(K,K)+DABS(AKU1(K,N))
+	ENDDO
+	ENDDO
+
+
+C=========================================================================
+	IF (IPASS.EQ.0) THEN
+c	GOTO 400
+      DO K=1,NDIM
+	DO N=1,NDIM
+	   RB2(K)=RB2(K)-AKU1(K,N)*TT21(N)
+	   RB3(K)=RB3(K)-AKU1(K,N)*TT21(N+NDIM)
+	ENDDO
+	ENDDO
+
+
+	FX=0.D0
+	FY=0.D0
+C LEFT AND RIGHT HAND SIDE
+      DO 263 I=1,1
+	DO 262 J=1,NDIM
+C      SKEF(I,I)=SKEF(I,I)+AKV2P(J,I)*(1.D0/AMASA(1,LM2(J)))*AKV2P(J,I)
+C      SKEF(I,I)=SKEF(I,I)+
+C	&AKV2P(J,I)*(1.D0/AMASA(2,LM2(J+NDIM)))*AKV2P(J,I)
+
+	  NODE=NEL(J,NBREL)
+	  F31(I)=F31(I)+AKV2P(J,I)*(1.D0/AMASA(1,NODE))*RB2(J)
+ 	  F31(I)=F31(I)+AKV3P(J,I)*(1.D0/AMASA(2,NODE))*RB3(J)
+
+C	  F31(I)=F31(I)+RB2(J)
+C 	  F31(I)=F31(I)+RB3(J)
+
+
+C	IF (LM2(J).NE.0) THEN
+C	  F31(I)=F31(I)-AKV2P(J,I)*(1.D0/AMASA(1,LM2(J)))*RB2(J)
+C	ENDIF
+	
+C	IF (LM2(J+NDIM).NE.0) THEN
+C 	  F31(I)=F31(I)-AKV3P(J,I)*(1.D0/AMASA(2,LM2(J+NDIM)))*RB3(J)
+C      ENDIF
+  262 CONTINUE
+  263 CONTINUE
+
+	   LM22(1)=IPRESS(NBREL)
+	   NDES1=1
+	   GOTO 399
+       ENDIF
+C=========================================================================
+	IF (IPASS.EQ.1) THEN
+	AFU=0.5D0
+
+      DO K=1,NDIM
+	DO N=1,NDIM
+	 IF (LM2(N).EQ.0) THEN
+	  RB2(K)=RB2(K)+(AKU1(K,N))*TT21(N)
+	 ENDIF
+	ENDDO
+	ENDDO
+
+
+	AFU=0.5D0
+      DO I=1,NDIM
+      DO  J=1,NDIM
+       SKEF(I,J)=AKU1(I,J)   
+	ENDDO
+
+       F31(I)=F31(I)+AKV2P(I,1)*PRITIS(2,NBREL)!-RB2(I)
+       LM22(I)=ID(IPASS,NEL(I,NBREL))
+	ENDDO
+	   
+	 NDES1=4
+	 GOTO 399
+       ENDIF
+C=========================================================================
+C=========================================================================
+C=========================================================================
+	IF (IPASS.EQ.2) THEN
+
+      DO K=1,NDIM
+	DO N=1,NDIM
+	 IF (LM2(N+NDIM).EQ.0) THEN
+	  RB2(K)=RB2(K)+(AKU1(K,N))*TT21(N+NDIM)
+	 ENDIF
+	ENDDO
+	ENDDO
+
+
+      DO I=1,NDIM
+      DO  J=1,NDIM
+       SKEF(I,J)=AKU1(I,J)   
+	ENDDO
+
+       F31(I)=F31(I)+AKV3P(I,1)*PRITIS(2,NBREL)!-RB2(I)
+       LM22(I)=ID(IPASS,NEL(I,NBREL))
+	ENDDO
+	   
+	 NDES1=4
+	 GOTO 399
+       ENDIF
+C=========================================================================
+C=========================================================================
+C=========================================================================
+	IF (IPASS.EQ.3) THEN
+	S=0.D0
+	F=0.D0
+	FX=0.D0
+	AFU=0.5D0
+
+
+
+C LEFT AND RIGHT HAND SIDE
+      DO I=1,1
+      DO J=1,NDIM
+
+	F31(I)=F31(I)-AKV2P(J,I)*TT21(J)
+    	F31(I)=F31(I)-AKV3P(J,I)*TT21(J+NDIM)
+
+	ENDDO
+
+	ENDDO
+	   LM22(1)=IPRESS(NBREL)
+	   NDES1=1
+	   GOTO 399
+       ENDIF
+C=========================================================================
+C=========================================================================
+C=========================================================================
+	IF (IPASS.EQ.4) THEN
+C LEFT AND RIGHT HAND SIDE
+
+
+      DO I=1,NDIM
+      DO J=1,1
+
+        NODE=NEL(I,NBREL)
+C        F31(I)=TT21(I)+(1.D0/AMASA(1,NODE))*AKV2P(I,J)*PRITIS(1,NBREL)
+        F31(I)=AKV2P(I,J)*PRITIS(1,NBREL)
+	ENDDO
+	   LM22(I)=LM2(I)
+	ENDDO
+	   
+	   NDES1=4
+	   GOTO 399
+       ENDIF
+C=========================================================================
+C=========================================================================
+C=========================================================================
+	IF (IPASS.EQ.5) THEN
+C LEFT AND RIGHT HAND SIDE
+      DO I=1,NDIM
+      DO J=1,1
+        NODE=NEL(I,NBREL)
+C        F31(I)=TT21(I+NDIM)+
+C	&(1.D0/AMASA(2,NODE))*AKV3P(I,J)*PRITIS(1,NBREL)
+        F31(I)=AKV3P(I,J)*PRITIS(1,NBREL)
+
+	ENDDO
+	   LM22(I)=LM2(I+NDIM)
+	ENDDO
+	   
+	   NDES1=4
+	   GOTO 399
+       ENDIF
+C=========================================================================
+C=========================================================================
+
+399   IF (IPASS.NE.1.AND.IPASS.NE.2) THEN
+       CALL SPAKDE (SILE,F31,LM22,NDES1)
+	 GOTO 400
+	ENDIF
+      CALL ADDSTF(ALEVO,SILE,DESNO,SKEF,F31,MAXA,LM22,NDES1,1)
+
+
+C=======================================================================
+C KRAJ PETLJE PO ELEMENTIMA
+C end of loop per elements
+C=======================================================================
+ 400  CONTINUE
+
+
+
+	IF (IPASS.EQ.0) THEN
+C       CALL WRRF(SILE,NET,'SILE=',IIZLAZ)
+
+C      DO  NE1=1,NET
+C	 C=0.D0
+C	  DO I=1,NDIM
+C	   JJ=ID(1,NEL(I,NE1)) 
+C	   NODE=NEL(I,NE1)
+C         IF (JJ.NE.0) THEN
+C	     C=C-CPRESS(I,1,NE1)*(1.D0/AMASA(1,NODE))*SILE(JJ)	    
+C	   ENDIF
+C	  ENDDO
+C
+C      ENDDO
+
+
+
+        CALL RESENF(ALEVO,SILE,MAXA,NET,NWK1,1)
+        CALL RESENF(ALEVO,SILE,MAXA,NET,NWK1,2)
+       CALL WRRF(SILE,NET,'RESE=',IIZLAZ)
+c	   STOP
+	AFP=0.5D0
+	DO I=1,NET
+	  IF (IPRESS(I).NE.0)THEN
+C	     WRITE(IIZLAZ,*)'IPRESS = ',IPRESS(I)
+	     PRITIS(2,I)=SILE(IPRESS(I))
+	     PRITIS(2,I)=AFP*PRITIS(1,I)+(1.D0-AFP)*PRITIS(2,I)
+	  ENDIF
+	WRITE(IIZLAZ,*)'PRITIS 1,2= ',PRITIS(1,I),PRITIS(2,I)
+	ENDDO
+	IPASS=1
+	GOTO 100
+	ENDIF
+
+
+	IF (IPASS.EQ.1.OR.IPASS.EQ.2) THEN
+	AFU=0.5D0
+
+	DO I=1,NPT
+	   JJ=ID(IPASS,I)
+	  IF(JJ.NE.0) THEN
+c	  LM22(1)=JJ
+c	  NDES1=1
+c	  SKEF(1,1)=(AFU/(1.D0-AFU))*AMASA(1,JJ)
+c	  F31(1)=0.D0
+c        CALL ADDSTF(ALEVO,SILE,DESNO,SKEF,F31,MAXA,LM22,NDES1,1)
+C        ALEVO(MAXA(JJ))=ALEVO(MAXA(JJ))+(AFU/(1.D0-AFU))*AMASA(IPASS,JJ)
+        ALEVO(MAXA(JJ))=ALEVO(MAXA(JJ))+(AFU/(1.D0-AFU))*AMASA(IPASS,I)
+	SILE(JJ)=SILE(JJ)+(AFU/(1.D0-AFU))*AMASA(IPASS,I)*GNODE(2,IPASS,I)
+C	   DESNO(MAXA(JJ))=DESNO(MAXA(JJ))+(AFU/(1.D0-AFU))*AMASA(1,JJ)
+	  ENDIF
+	ENDDO
+
+
+	ENDIF
+
+	IF (IPASS.EQ.3) THEN
+        CALL RESENF(ALEVO,SILE,MAXA,NET,NWK1,1)
+        CALL RESENF(ALEVO,SILE,MAXA,NET,NWK1,2)
+	DO I=1,NET
+	  IF (IPRESS(I).NE.0)THEN
+	     PRITIS(2,I)=PRITIS(2,I)+SILE(IPRESS(I))
+	     PRITIS(1,I)=SILE(IPRESS(I))
+	WRITE(IIZLAZ,*)'PRITIS 1,2= ',PRITIS(1,I),PRITIS(2,I)
+	  ENDIF
+	ENDDO
+	IPASS=4
+
+
+
+	GOTO 100
+	ENDIF
+
+
+	IF (IPASS.EQ.4) THEN
+         DO I=1,NPT
+          IF (ID(1,I).NE.0) THEN
+	       GNODE(2,1,I)=GNODE(2,1,I)+SILE(ID(1,I))*(1.D0/AMASA(1,I))
+	WRITE(IIZLAZ,*)'I, GNODE(2,1,I)= ',I,GNODE(2,1,I),ID(1,I)
+	    ENDIF 
+	   ENDDO
+	
+	IPASS=5
+	GOTO 100
+	ENDIF
+
+	IF (IPASS.EQ.5) THEN
+         DO I=1,NPT
+          IF (ID(2,I).NE.0) THEN
+	       GNODE(2,2,I)=GNODE(2,2,I)+SILE(ID(2,I))*(1.D0/AMASA(2,I))
+C	       GNODE(2,2,I)=SILE(ID(2,I))
+CC	WRITE(IIZLAZ,*)'GNODE(2,1,I)=',GNODE(2,1,I)
+	    ENDIF 
+	   ENDDO
+
+	DO I=1,NET
+	  PRITIS(1,I)=PRITIS(2,I)
+	ENDDO
+	ENDIF
+
+
+      
+C End of subroutine
+      END
+C=======================================================================
+C=========================================================================

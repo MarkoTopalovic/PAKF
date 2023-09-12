@@ -1,0 +1,112 @@
+C**********************************************************************
+C     SUBROUTINE FOR OSI INDEX CALCULATION
+C
+C     AUTHORS: BLAGOJEVIC MILAN & NIKOLIC ALEKSANDAR
+C     DATE CREATED:  05-09-2012
+C     DATE MODIFIED: 06-09-2012
+C
+C**********************************************************************
+	SUBROUTINE OSICALC(KKORAK,IBKOR,PRES,PRES1,VOSI,TAU,DT,VREME,NPT,
+     &NUMZAD,NZAD,ZADVRE)
+
+	IMPLICIT double precision (a-h,o-z)
+	DIMENSION PRES(3,*)
+	DIMENSION PRES1(100,3,*)
+	DIMENSION TAU(100,2,*)
+	DIMENSION VOSI(100,*)
+	DIMENSION ZADVRE(*),NZAD(3,*)
+	
+C**********************************************************************
+C     PRES(3,*) - KOMPONENTE SHEAR STRESSA
+C     PRES1(100,3,*) - KOMPONENTE SHEAR STRESSA PO KORACIMA
+C     TAUmean - GORNJI INTEGRAL U JEDNACINI ZA OSI
+C     TAUMag - DONJI INTEGRAL U JEDNACINI ZA OSI
+C     KKORAK - UKUPAN BROJ KORAKA 
+C     IBKOR - TRENUTNI BROJ KORAKA
+C     DT - INKREMENT VREMENA U TRENUTNOM KORAKU
+C     VREME - UKUPNO VREME
+C     NPT - UKUPAN BROJ CVOROVA
+C     NUMZAD - UKUPAN BROJ ZADATIH KOMPONENATA BRZINA
+C     NZAD(3,*) - BROJ CVORA KOJI IMA ZADATU VREDNOST
+C     ZADVRE(*) - ZADATA KOMPONENNTA BRZINE U CVORU
+C     IFND - INDIKATOR DA JE TRENUTNI CVOR PRIPADA ULAZU (IFND=1)
+C     EFZAD - EFEKTIVNA VREDNOST BRZINE U CVORU NA ULAZU
+C     VOSI(100,*) - VREDNOST OSI INDEXA [0-0.5]
+C**********************************************************************
+
+      DO NODE = 1,NPT
+
+      PRES1(KKORAK,1,NODE)=PRES(1,NODE)
+      PRES1(KKORAK,2,NODE)=PRES(2,NODE)
+      PRES1(KKORAK,3,NODE)=PRES(3,NODE)
+ 
+ 
+      WSSX = PRES1(KKORAK,1,NODE)
+      WSSY = PRES1(KKORAK,2,NODE) 
+      WSSZ = PRES1(KKORAK,3,NODE) 
+            
+      IF(KKORAK.EQ.1) THEN
+      WSSX1 = 0.0
+	WSSY1 = 0.0
+	WSSZ1 = 0.0
+	TAUMmean = 0.0
+	TAUMmag = 0.0
+	ELSE
+	WSSX1 = PRES1(KKORAK-1,1,NODE)
+	WSSY1 = PRES1(KKORAK-1,2,NODE)
+	WSSZ1 = PRES1(KKORAK-1,3,NODE)
+	TAUMmean = TAU(KKORAK-1,1,NODE)
+	TAUMmag  = TAU(KKORAK-1,2,NODE)
+	ENDIF
+	
+	TAUmeanX = (WSSX + WSSX1)/2 * DT
+	TAUmeanY = (WSSY + WSSY1)/2 * DT
+	TAUmeanZ = (WSSZ + WSSZ1)/2 * DT
+	TAUmean = TAUMmean + ABS((TAUmeanX + TAUmeanY + TAUmeanZ)/3)	
+	
+	TAUmagX = (ABS(WSSX) + ABS(WSSX1))/2 * DT
+	TAUmagY = (ABS(WSSY) + ABS(WSSY1))/2 * DT
+	TAUmagZ = (ABS(WSSZ) + ABS(WSSZ1))/2 * DT
+	TAUmag = TAUMmag + (TAUmagX + TAUmagY + TAUmagZ)/3
+      
+      TAU(KKORAK,1,NODE) = TAUmean
+	TAU(KKORAK,2,NODE) = TAUmag
+	
+	IF(KKORAK.EQ.IBKOR) THEN
+      UP   = TAUmean / VREME 
+      DOWN = TAUmag  / VREME
+      IF(UP.LT.1e-5) THEN
+      TKT = 0
+      ELSE
+      TKT = UP/DOWN
+      ENDIF
+      
+C KOREKCIJA OSI INDEXA NA ULAZNOM PRESEKU
+
+      IFND=0
+      EFZAD = 0.
+
+      DO ISRC=1,NUMZAD
+      IF (NZAD(1,ISRC).EQ.NODE) EFZAD = EFZAD + ZADVRE(ISRC)**2
+      ENDDO
+      
+      EFZAD = SQRT(EFZAD)
+      IF (EFZAD.GT.1E-5) IFND=1 
+
+      IF(IFND.EQ.0) THEN
+      
+C RACUNANJE OSI INDEXA PREMA FILIPOVICU
+      VOSI(1,NODE) = 0.5 * (1-TKT)
+      
+      ELSE
+      VOSI(1,NODE) = 0.5
+      ENDIF
+      
+      WRITE(60,1000) VOSI(1,NODE)
+      ENDIF
+	    
+      ENDDO
+ 1000 FORMAT(E13.6)
+      RETURN
+	END
+C**********************************************************************

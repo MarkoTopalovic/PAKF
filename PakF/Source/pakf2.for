@@ -1,0 +1,738 @@
+#define MUMPS_CLUSTER .FALSE.
+C$DEBUG      
+C===========================================================================
+C===========================================================================
+C     SUBROUTINE PPAKF
+C                CFD
+C                CFDD
+C
+C===========================================================================
+C===========================================================================
+      SUBROUTINE PPAKF(A,LPAKF,NNPER,LMMAX,IS,VREM0,KORBR,IBKOR)
+      DIMENSION IS(*)
+C      DIMENSION PRES1(100,3,*)
+C      DIMENSION TAU(100,2,*)
+C      DIMENSION VOSI(100,*)
+C
+CE    Subroutine PPAKF is used for calling CFD analysis
+C
+      DIMENSION A(*)
+      REAL A
+     
+       CHARACTER*130HEADF
+	     
+       CALL INTREA(NIDATF,A(LPAKF+0))
+       CALL INTREA(NRDATF,A(LPAKF+1))
+       CALL INTREA(LIDATF,A(LPAKF+2))
+       CALL INTREA(LDATF,A(LPAKF+3))
+       CALL INHEAD(A(LPAKF+4),HEADF)        
+
+       CALL CFD(HEADF,A,A(LIDATF),A(LDATF),NNPER,LMMAX,IS,VREM0,KORBR,
+     +     PRES1,TAU,VOSI,IBKOR)
+      END
+C===========================================================================
+C===========================================================================
+      SUBROUTINE CFD(NASLOV,A,I,R,NNPER,LMMAX,IS,VREM0,KORBR,
+     + RES1,TAU,VOSI,IBKOR)
+      IMPLICIT DOUBLE PRECISION(A-H,O-Z)
+      COMMON /ALE/ IALE,METOD,IALFA
+      CHARACTER(*)NASLOV
+      DIMENSION A(*),I(*),R(*),IS(*)
+      REAL A
+	COMMON /NJUTN/ NJUTRA,ISYMMS
+ 	COMMON /SPBCON/ IBOUND
+	COMMON /MUMPS_PAK/ IMUMPS, MUFILE,MUFILE2
+	COMMON /TRANSP/ INDFL,LID1
+C
+CE    Subroutine CFD is used for calling CFD analysis
+C
+      IAGAIN=1 
+100   CONTINUE
+        
+      LMAX=LMMAX
+      LMAX0=LMAX
+      NTOT=I(23)
+      NETIP=I(25)
+      IULAZ=I(26)
+      IZLAZ=I(27)
+      NPT=I(30)
+      NEQ=I(33)
+      NWK=I(34)
+      NET=I(35)
+      NDES=I(38)
+      IDPRIT=I(39)
+      LSPSIL=I(21)
+      I(43)=KORBR
+      R(11)=VREM0
+      KKORAK=I(43)
+
+c================================================================
+C Corrected because optimum memory allocation for huge 3D problems
+        CALL MEMORY(LVMESH,LMAX,NPT*3,2,NTOT,IZLAZ)
+        CALL MEMORY(LCORD0,LMAX,3,2,NTOT,IZLAZ)
+c        CALL MEMORY(LVMESH,LMAX,NPT*3,2,NTOT,IZLAZ)
+c        CALL MEMORY(LCORD0,LMAX,NPT*3,2,NTOT,IZLAZ)
+c================================================================
+       LAMASA=LMAX
+       LVELOC=LMAX
+       LGNOD0=LMAX
+       LVMSH0=LMAX
+
+	 CALL MEMORY(LPRIT,LMAX,IDPRIT*NET,2,NTOT,IZLAZ)
+       if (kkorak.gt.1) lmax0=lmax
+
+      IF (METOD.EQ.2) THEN
+       CALL MEMORY(LAMASA,LMAX,NPT,2,NTOT,IZLAZ)
+       CALL MEMORY(LVELOC,LMAX,NPT*3,2,NTOT,IZLAZ)
+      ELSEIF (IALE.EQ.2) THEN
+       CALL MEMORY(LGNOD0,LMAX,NPT*3,2,NTOT,IZLAZ)
+       CALL MEMORY(LVMSH0,LMAX,NPT*3,2,NTOT,IZLAZ)
+      ENDIF
+      CALL MEMORY(LSKEF,LMAX,NDES*NDES,2,NTOT,IZLAZ)
+      CALL MEMORY(LPRES,LMAX,3*NPT,2,NTOT,IZLAZ)
+C ZA OSI CALC
+      CALL MEMORY(LPRES1,LMAX,3*NPT,2,NTOT,IZLAZ)
+      CALL MEMORY(LTAU,LMAX,1*NPT,2,NTOT,IZLAZ) 
+      CALL MEMORY(LVOSI,LMAX,1*NPT,2,NTOT,IZLAZ)
+      CALL MEMORY(LIBKOR,LMAX,1*NPT,2,NTOT,IZLAZ)
+C
+      LMAX2=LMAX
+      IF (IMUMPS.eq.1 .or. (IMUMPS.GE. 5 .and. IMUMPS.LE.9)) then
+	nwk=1
+      I(34)=nwk
+	endif
+      CALL MEMORY(LALEVO,LMAX,NWK,2,NTOT,IZLAZ)
+	IF (ISYMMS.EQ.0) CALL MEMORY(LDESNO,LMAX,NWK,2,NTOT,IZLAZ)
+      CALL MEMORY(LSILE,LMAX,NEQ,2,NTOT,IZLAZ)
+      CALL MAXMEM(LMAX,NTOT,IZLAZ,I(43),NWK)
+      IF (NJUTRA.NE.1) THEN 
+        CALL CLEARR(A(LMAX0),LMAX-LMAX0+1)
+	ENDIF
+	 LIPRESS=1
+	 LPRITIS=1
+	 LAMASA=1
+	 LCPRESS=1
+	 
+C CALLING COMPUTATIONAL FLUID DYNAMICS ROUTINE
+c      CALL CFDD(A,NASLOV,A(I(1)),A(I(2)),A(I(3)),A(I(4)),A(I(5)),
+c     &A(I(6)),A(I(7)),A(I(8)),A(I(9)),A(I(10)),A(I(11)),A(I(12)),
+c     &A(I(13)),A(I(14)),A(I(15)),A(I(16)),A(I(17)),A(I(18)),A(I(19)),
+c     &A(I(20)),A(I(21)),I(24),I(25),I(26),I(27),I(28),I(29),I(30),I(31),
+c     &I(32),I(33),I(34),I(35),I(36),I(37),I(38),I(39),I(40),I(41),I(42),
+c     &I(43),A(I(46)),R(1),R(2),R(3),R(4),R(5),R(6),R(7),R(8),R(9),R(10),
+c     &R(11),A(LSKEF),A(LPRES),A(LPRIT),A(LALEVO),A(LDESNO),A(LSILE),
+c     &NNPER,I,IS,LMAX,LMAX2,NTOT,A(LAMASA),A(LVMESH),A(LVELOC),A(I(45)),
+c     &A(LGNOD0),A(LCORD0),A(LVMSH0),A(LIPRESS),A(LPRITIS),A(LCPRESS),
+c     &IAGAIN,A(LID1))
+
+C CALLING COMPUTATIONAL FLUID DYNAMICS ROUTINE
+      CALL CFDD3d8(A,NASLOV,A(I(1)),A(I(2)),A(I(3)),A(I(4)),A(I(5)),
+     &A(I(6)),A(I(7)),A(I(8)),A(I(9)),A(I(10)),A(I(11)),A(I(12)),
+     &A(I(13)),A(I(14)),A(I(15)),A(I(16)),A(I(17)),A(I(18)),A(I(19)),
+     &A(I(20)),A(I(21)),I(24),I(25),I(26),I(27),I(28),I(29),I(30),I(31),
+     &I(32),I(33),I(34),I(35),I(36),I(37),I(38),I(39),I(40),I(41),I(42),
+     &I(43),A(I(46)),R(1),R(2),R(3),R(4),R(5),R(6),R(7),R(8),R(9),R(10),
+     &R(11),A(LSKEF),A(LPRES),A(LPRIT),A(LALEVO),A(LDESNO),A(LSILE),
+     &NNPER,I,IS,LMAX,LMAX2,NTOT,A(LAMASA),A(LVMESH),A(LVELOC),A(I(45)),
+     &A(LGNOD0),A(LCORD0),A(LVMSH0),A(LIPRESS),A(LPRITIS),A(LCPRESS),
+     &IAGAIN,A(LID1),A(LPRES1),A(LTAU),A(LVOSI),A(LIBKOR))
+
+C============================================================================
+C ONLY FOR VIENNA EXAMPLE , NOV. 28, 2004
+      IF (IAGAIN.EQ.1.AND.IBOUND.EQ.1) THEN
+	 IAGAIN=0
+	 GOTO 100
+	 ENDIF
+C============================================================================
+C End of subroutine CFD
+      END
+C=========================================================================
+C=========================================================================
+      SUBROUTINE CFDD(A,NASLOV,VREME,NTABF,ID,CORD,NEL,NZAD,ZADVRE,TABF,
+     &ITFMAX,NGPSIL,MAXA,MHT,TT1,TT10,CCORD,SPAR1,AKc,
+     &IKc,ROW,INDEL,SPSIL,MAXIT,NETIP,IULAZ,IIZLAZ,INDAMI,NUMZAD,NPT,
+     &NDIM,MAXSIL,JEDN,NWK,NET,NPER,NTABFT,NDES,IDPRIT,IFORM,NSTAC,INDAX
+     &,KKORAK,GNODE,GUSM,CC,AKT,EPSTR,AMI,BETA,TETAO,FB2,FB3,PENALT,
+     &VVREME,SKEF,PRES,PRIT,ALEVO,DESNO,SILE,NNPER,IF,IS,LMAX,LMAX2,
+     &NTOTF,AMASA,VMESH,VELOC,IDALE,GNOD0,CCORD0,VMESH0,IPRESS,PRITIS,
+     &CPRESS,IAGAIN,ID1,PRES1,TAU,VOSI,IBKOR)
+
+      IMPLICIT DOUBLE PRECISION(A-H,O-Z)
+#if(!MUMPS_CLUSTER)
+      INCLUDE 'mpif.h'
+      INCLUDE 'dmumps_struc.h'
+#endif
+C
+CE Subroutine CFDD makes 2-D and 3-D analysis with fluid-structure coupling
+C
+      COMMON /INTERA/ IINTER,NPTI
+      COMMON /SRPSKI/ ISRPS
+      COMMON /CDEBUG/ IDEBUG
+      COMMON /AKIRA/ VOLT,PBALL,VSR,PBOX,PTUBE,POS(3)
+      COMMON /AKIRA1/ VOLT1,PBALL1,VSR1,PTUBE1
+      COMMON /ALE/ IALE,METOD,IALFA
+      COMMON /PRIKAZ/ INDSC
+      COMMON /STAUNV/ NPRINT
+	COMMON /NJUTN/ NJUTRA,ISYMMS
+ 	COMMON /SPBCON/ IBOUND
+	COMMON /MUMPS_PAK/ IMUMPS, MUFILE,MUFILE2
+	COMMON /RESTART/ IRESTA,RESTVR
+	COMMON /TRANSP/ INDFL,LID1
+C------------------------------------------
+C ZA TURBULENCIJIU
+C------------------------------------------
+      COMMON /TURB/ ITURB
+      COMMON /POCK/ POCK
+      COMMON /POCO/ POCO
+      COMMON /DELTAL/ DELTAL
+      COMMON /IZID/ IZID
+C------------------------------------------
+#if(!MUMPS_CLUSTER)
+	COMMON /MUMPS/ mumps_par
+      TYPE (DMUMPS_STRUC) mumps_par
+#endif
+
+
+      CHARACTER*250 NASLOVF
+      CHARACTER*20 IMEF
+      DIMENSION TT1(*),ALEVO(*),DESNO(*),SILE(*),ZADVRE(*),CORD(3,*)
+      DIMENSION NEL(NDIM+1,*),ID(7,*),NZAD(3,*),ID1(7,*)
+      DIMENSION NGPSIL(8,*),MAXA(*)
+      DIMENSION SKEF(NDES,*),TT10(*),MHT(*),TABF(2,NTABFT,*)
+      DIMENSION ITFMAX(*),INDEL(*),NTABF(*)
+      DIMENSION PRIT(IDPRIT,*),SPSIL(NETIP,*),CCORD(3,*),PRES(3,*)
+      DIMENSION AMASA(*),VMESH(3,*),VELOC(3,*),IDALE(3,*)
+      DIMENSION GNOD0(3,*),CCORD0(3,*),VMESH0(3,*)
+      DIMENSION AKc(*),IKc(2,*),ROW(*)
+      DIMENSION LM2(92)
+      DIMENSION VREME(*),GNODE(2,7,*)
+      DIMENSION IF(*),IS(*)
+	DIMENSION IPRESS(*)
+	DIMENSION PRITIS(2,*)
+	DIMENSION CPRESS(4,2,*)
+      DIMENSION A(*)
+      REAL A
+
+      ITER=0
+      INDSK=1
+      IF (IRESTA.EQ.1) THEN
+	  VVREME=VVREME+RESTVR
+	ENDIF
+
+C==========================================================================
+C INITIAL AND BOUNDARY CONDITION FOR SEGREGATED PROCEDURE
+      IF (METOD.EQ.4) IPASS=0
+	IF (KKORAK.EQ.1.AND.METOD.EQ.4) THEN
+     
+	  DO I=1,NET
+	     PRITIS(1,I)=0.D0
+	     PRITIS(2,I)=0.D0
+	  ENDDO
+	 
+	  DO I=1,NET
+	     IPRESS(I)=I
+	  ENDDO
+	ENDIF
+
+C VVREME is global time
+C KKORAK is global step
+
+      KORAK=0
+
+C KORAK is local step at each period NNPER
+
+      KORAK=KORAK+1
+      TIME=VREME(NNPER)
+      IPROLAZ=0
+111   CONTINUE
+
+       ITER=0
+c TT10-vector of unknowns values at start of every time step
+      IF (INDFL.EQ.0) THEN
+	IF (IPROLAZ.EQ.1.AND.NSTAC.EQ.0) NSTAC=1
+	IF (IPROLAZ.EQ.0) NSTAC=0
+      NEQF=0 
+	DO 122 I=1,NPT
+	IF (IPROLAZ.EQ.0) THEN
+         ID(1,I)=ID1(1,I)
+         ID(2,I)=ID1(2,I)
+         ID(3,I)=ID1(3,I)
+	   ID(4,I)=1
+	   ID(5,I)=1
+	   ID(6,I)=1
+	ELSE
+         ID(1,I)=1
+         ID(2,I)=1
+         ID(3,I)=1
+	   ID(4,I)=1
+	   ID(5,I)=ID1(5,I)
+	   ID(6,I)=1
+	ENDIF
+        DO J=1,6 
+         IF (ID(J,I).EQ.0) THEN
+	     NEQF=NEQF+1
+	     ID(J,I)=NEQF	     
+	   ELSE
+	     ID(J,I)=0
+	   ENDIF
+      
+	  ENDDO
+122	CONTINUE
+
+       CALL MAXATF(MAXA,MHT,ID,NEL,NET,NDIM,NEQF,NWKF,7,NDIM+1,iizlaz)
+
+	 JEDN1=NEQF
+	 JEDN=JEDN1
+	 NWK1=NWKF
+	 NWK=NWK1
+	ELSE
+       NWK1=NWK
+	 JEDN1=JEDN
+	ENDIF
+
+C=========================================================================	     
+      DO 20 I=1,NDES
+ 20   LM2(I)=0
+
+      IF (IALE.EQ.2) THEN
+      DO NODE=1,NPT
+       DO I=1,3
+        GNOD0(I,NODE)=GNODE(1,I,NODE)
+       ENDDO
+      ENDDO
+      ENDIF
+
+CE ONLY TEMPORARILY FOR AKIRA EXAMPLE FLUID FLOW THROUGH ELASTIC TUBE
+CS SAMO PRIVREMENO ZA AKIRIN PRIMER STRUJANJA FLUIDA KROZ ELASTICNU CEV
+C      CALL BALLON(ID,TT1,TT10,CCORD,FK1,TIME,VVREME,KKORAK,
+C     &ITER,NPT,IIZLAZ,PRES,ZADVRE,NUMZAD)
+C      CALL ZBALL(GNODE,CCORD,TIME,VVREME,KKORAK,ITER,NPT,IIZLAZ,CORD)
+C================================================================
+C================================================================
+c ONLY FOR INTERACTION MOVING BODY PROBLEM
+C	CALL INTERMOVING(GNODE,ID,NEL,NET,NPT,NDIM,JEDN1,NWK1,MHT,MAXA,
+C     &CORD,VVREME,IIZLAZ)
+C================================================================
+C================================================================
+      IF (NPTI.GT.0.AND.NSTAC.EQ.1) CALL CLEAR(GNODE,2*6*NPT)
+      CALL ZADNOD(GNODE,ZADVRE,NZAD,TABF,VVREME,ITFMAX,NTABFT,
+     &IIZLAZ,NUMZAD,NPT,CORD)
+     
+      DO NODE=1,NPT
+       DO I=1,7
+        GNODE(1,I,NODE)=GNODE(2,I,NODE)
+       ENDDO
+      ENDDO
+      IF (IALE.EQ.2) CALL TCORDC(CCORD,CCORD0,NPT,NETIP)
+
+      IF (NPTI.GT.0.AND.KKORAK.GT.1) THEN
+        CALL WALLPS(A,IF,LMAX,GNODE,A(1),NETIP,NSTAC,TIME,CCORD,NPT,
+     &NEL,NDIM,NET)
+        CALL GREZON(VMESH,CCORD,CCORD0,NPT,NETIP,TIME)
+      ENDIF
+
+C==========================================================================
+C LABEL 100:
+C==========================================================================
+C MAXIT is maximal number of iteration
+
+ 100  IF (ITER.GT.MAXIT) THEN
+        WRITE(IIZLAZ,3001) MAXIT
+ 3001 FORMAT(//
+     1,'IT IS ACHIEVED MAXIMUM ',I5,' ITERATIONS WITHOUT MAKING
+     1 CONVERGENCE !!'//)
+       STOP
+       ENDIF
+
+C NWK is number of terms of stiffness matrix in skyline procedure
+C ALEVO is upper profile of skyline for asymmetric system
+C DESNO is lower profile of skyline for asymmetric system
+C SILE is right-hand side of system
+
+      CALL CLEAR(SPSIL,NETIP*NPT)
+      IF (ITER.EQ.0.OR.NJUTRA.NE.1) THEN 
+       CALL CLEAR(ALEVO,NWK)
+       IF (ISYMMS.EQ.0) CALL CLEAR(DESNO,NWK)
+	ENDIF
+      CALL CLEAR(SILE,JEDN)
+      CALL CLEAR(pres,3*npt)
+      CALL CLEAR(prit,idprit*net)
+
+C
+CE DEFINITION OF NUMBER OF GAUSS POINT FOR INTEGRATION
+CS ODREDJIVANJE BROJA GAUSOVIH TACAKA PRILIKOM INTEGRACIJE
+C gauss point integration for 9-node and 8-node element is 3x3
+C gauss point integration for 4-node element is 2x2
+C NDIM is number of nodes per element
+C NPT is global number of nodes
+
+	IF (NETIP.EQ.2.AND.NDIM.EQ.4) IBRGT=2
+	IF (NETIP.EQ.2.AND.NDIM.EQ.9) IBRGT=3
+	IF (NETIP.EQ.3.AND.NDIM.EQ.8) IBRGT=2
+	IF (NETIP.EQ.3.AND.NDIM.EQ.21) IBRGT=3
+
+C SPSIL are forces from fluid dynamic analysis to solid
+
+C================================================================
+CE ONLY TEMPORARILY
+CS SAMO PRIVREMENO
+      IUPWIN=0
+C      IUPWIN=1
+c	INDAMI=1
+C================================================================
+C================================================================
+C METOD VREMENSKE INTEGRACIJE
+       AF=1.D0
+       IF (IALFA.EQ.2) AF=1.D0/2.D0
+       IF (IALFA.EQ.3) AF=2.D0/3.D0
+C================================================================
+C================================================================
+c      IF (KKORAK.GE.2) IUPWIN=1
+C================================================================
+
+C GLAVNA PETLJA PO ELEMENTIMA
+C GLOBAL LOOP PER ELEMENTS
+C NBREL is counter of elements
+	IF (NETIP.EQ.3 ) THEN
+      CALL EXPAN3D(GNODE,CORD,CCORD,ID,VVREME,NPT,VMESH,TIME,NSTAC,
+     &ZADVRE,AMI/GUSM,KKORAK) 
+	endif
+
+	IF (NETIP.EQ.2 ) THEN
+C ONLY FOR EXPANDABLE TUBE EXAMPLE:
+      CALL EXPAN(GNODE,CORD,CCORD,ID,VVREME,NPT,VMESH,TIME,NSTAC,ZADVRE,
+     &AMI/GUSM,KKORAK)
+C================================================================
+C      CALL CLEAR(PRES,3*NPT)
+      IF (METOD.EQ.2) THEN
+      CALL EXIM2D(GNODE,NEL,ID,CORD,SKEF,
+     &TABF,ITFMAX,NBREL,TIME,KKORAK,VVREME,SPSIL,ALEVO,DESNO,SILE,ITER,
+     &NGPSIL,MAXA,IBRGT,NASLOV,GUSM,CC,AKT,IIZLAZ,AMI,
+     &INDAMI,BETA,TETAO,FB2,FB3,NUMZAD,NPT,NDIM,MAXSIL,JEDN,NWK,NET,
+     &NPER,NTABFT,NDES,IDPRIT,IFORM,PENALT,PRESS,NSTAC,INDAX,IUPWIN,
+     &PRES,AMASA,VMESH,CCORD,VELOC,IDALE)
+      GOTO 480
+      ELSEIF (IALE.EQ.2) THEN
+      CALL ALE2D1 (GNODE,NEL,ID,CORD,SKEF,
+     &TABF,ITFMAX,NBREL,TIME,KKORAK,VVREME,SPSIL,ALEVO,DESNO,SILE,ITER,
+     &NGPSIL,MAXA,IBRGT,NASLOV,GUSM,CC,AKT,IIZLAZ,AMI,
+     &INDAMI,BETA,TETAO,FB2,FB3,NUMZAD,NPT,NDIM,MAXSIL,JEDN,NWK,NET,
+     &NPER,NTABFT,NDES,IDPRIT,IFORM,PENALT,PRESS,NSTAC,INDAX,IUPWIN,
+     &PRES,VMESH,CCORD,CCORD0,VMESH0,GNOD0)
+      ELSE
+      IF (METOD.EQ.4) THEN
+      CALL STEG2D(GNODE,NEL,ID,CCORD,SKEF,
+     &TABF,ITFMAX,NBREL,TIME,KKORAK,VVREME,SPSIL,ALEVO,DESNO,SILE,ITER,
+     &NGPSIL,MAXA,IBRGT,NASLOV,GUSM,CC,AKT,IIZLAZ,AMI,
+     &INDAMI,BETA,TETAO,FB2,FB3,NUMZAD,NPT,NDIM,MAXSIL,JEDN,NWK,NET,
+     &NPER,NTABFT,NDES,IDPRIT,IFORM,PENALT,PRESS,NSTAC,INDAX,IUPWIN,
+     &PRES,VMESH,IALE,AF,INDEL,IPRESS,IPASS,PRITIS,AMASA,CPRESS)
+	ELSE
+      CALL RACU2D(GNODE,NEL,ID,CCORD,SKEF,
+     &TABF,ITFMAX,NBREL,TIME,KKORAK,VVREME,SPSIL,ALEVO,DESNO,SILE,ITER,
+     &NGPSIL,MAXA,IBRGT,NASLOV,GUSM,CC,AKT,IIZLAZ,AMI,
+     &INDAMI,BETA,TETAO,FB2,FB3,NUMZAD,NPT,NDIM,MAXSIL,JEDN1,NWK1,NET,
+     &NPER,NTABFT,NDES,IDPRIT,IFORM,PENALT,PRESS,NSTAC,INDAX,IUPWIN,
+     &PRES,VMESH,IALE,AF,INDEL,NJUTRA,ISYMMS,NZAD,ZADVRE)
+	ENDIF
+      ENDIF
+
+	ELSEIF(NETIP.EQ.3) THEN
+	
+       IF (METOD.EQ.2) THEN
+      CALL EXIM3D(GNODE,ALEVO,DESNO,SILE,NEL,
+     1ID,NGPSIL,MAXA,CCORD,SKEF,PRIT,SPSIL,IBRGT,
+     &ITFMAX,TABF,GUSM,CC,AKT,NETIP,IIZLAZ,AMI,INDAMI,BETA,TETAO,FB2,
+     &FB3,NUMZAD,NPT,NDIM,MAXSIL,JEDN,NWK,NET,NDES,IDPRIT,IFORM,NPER,
+     &NTABFT,PENALT,PRES,NSTAC,VVREME,TIME,INDEL,ZADVRE,NZAD,IUPWIN,
+     &AMASA,VMESH,CCORD,VELOC,IDALE)
+      GOTO 480
+      ELSEIF (IALE.EQ.2) THEN
+      CALL ALE3DN(GNODE,ALEVO,DESNO,SILE,NEL,
+     1ID,NGPSIL,MAXA,CCORD,SKEF,PRIT,SPSIL,IBRGT,
+     &ITFMAX,TABF,GUSM,CC,AKT,NETIP,IIZLAZ,AMI,INDAMI,BETA,TETAO,FB2,
+     &FB3,NUMZAD,NPT,NDIM,MAXSIL,JEDN,NWK,NET,NDES,IDPRIT,IFORM,NPER,
+     &NTABFT,PENALT,PRES,NSTAC,VVREME,TIME,INDEL,ZADVRE,NZAD,IUPWIN,
+     &VMESH,IALE)
+      ELSE
+
+      if (ndim.eq.8.or.ndim.eq.21) then
+      
+      CALL RACU3D(GNODE,ALEVO,DESNO,SILE,NEL,
+     1ID,NGPSIL,MAXA,CCORD,SKEF,PRIT,SPSIL,IBRGT,
+     &ITFMAX,TABF,GUSM,CC,AKT,NETIP,IIZLAZ,AMI,INDAMI,BETA,TETAO,FB2,
+     &FB3,NUMZAD,NPT,NDIM,MAXSIL,JEDN,NWK,NET,NDES,IDPRIT,IFORM,NPER,
+     &NTABFT,PENALT,PRES,NSTAC,VVREME,TIME,INDEL,ZADVRE,NZAD,IUPWIN,
+     &VMESH,IALE,AF,NJUTRA,ISYMMS,ITER,KKORAK,DELTAL)
+	else
+      CALL RACU3Dtethra(GNODE,ALEVO,DESNO,SILE,NEL,
+     1ID,NGPSIL,MAXA,CCORD,SKEF,PRIT,SPSIL,IBRGT,
+     &ITFMAX,TABF,GUSM,CC,AKT,NETIP,IIZLAZ,AMI,INDAMI,BETA,TETAO,FB2,
+     &FB3,NUMZAD,NPT,NDIM,MAXSIL,JEDN,NWK,NET,NDES,IDPRIT,IFORM,NPER,
+     &NTABFT,PENALT,PRES,NSTAC,VVREME,TIME,INDEL,ZADVRE,NZAD,IUPWIN,
+     &VMESH,IALE,AF,NJUTRA,ISYMMS,ITER,-1,METOD,0)
+      endif
+
+
+       ENDIF
+      ENDIF
+
+C===========================================================================
+C UNSYMMETRIC SOLVER
+C===========================================================================
+
+      IF (METOD.EQ.4) THEN
+
+	IF (IPASS.EQ.5) RETURN
+
+	IF (IPASS.EQ.1.OR.IPASS.EQ.2) THEN
+	JEDN1=0
+	DO I=1,NPT
+	 IF (ID(IPASS,I).NE.0) JEDN1=JEDN1+1
+	ENDDO
+	ENDIF
+
+      CALL UACTCF(ALEVO,DESNO,SILE,MAXA,JEDN1,1)
+      CALL UACTCF(ALEVO,DESNO,SILE,MAXA,JEDN1,2)    
+
+	IF (IPASS.EQ.1.OR.IPASS.EQ.2) THEN
+         DO I=1,NPT
+          IF (ID(IPASS,I).NE.0) THEN
+	       GNODE(2,IPASS,I)=SILE(ID(IPASS,I))
+	    ENDIF 
+	   WRITE(IIZLAZ,*)'GNODE = ',I,GNODE(2,IPASS,I)
+         ENDDO
+      IPASS=IPASS+1
+	GOTO 100
+	ENDIF
+
+	ELSE
+
+      IF (NJUTRA.EQ.1.AND.ITER.GT.0) GOTO 420
+      
+      IF (IMUMPS.eq.1 .or. (IMUMPS.GE. 5 .and. IMUMPS.LE.9)) GOTO 422
+
+      IF (ISYMMS.EQ.1) THEN 
+        CALL RESENF(ALEVO,SILE,MAXA,JEDN,NWK,1)
+	ELSE
+        CALL UACTCF(ALEVO,DESNO,SILE,MAXA,JEDN1,1)
+	ENDIF
+
+420   IF (ISYMMS.EQ.1) THEN 
+        CALL RESENF(ALEVO,SILE,MAXA,JEDN,NWK,2)
+    	ELSE 
+        CALL UACTCF(ALEVO,DESNO,SILE,MAXA,JEDN1,2)
+	ENDIF
+
+ 422    continue
+
+C PROVERA RESENJA SA DIREKTNIM SOLVEROM UACTCF     
+c	call checksolver(sile,jedn,tt1)
+
+C Poziv MUMPS paralelnog solvera sa silama i brojem jednacina
+      IF (IMUMPS.eq.1 .or. (IMUMPS.GE. 5 .and. IMUMPS.LE.9)) THEN     
+#if(MUMPS_CLUSTER)
+        CALL MUMPSRIGHT(SILE,JEDN1)
+        CALL SOLVER(SILE, JEDN1)
+#else
+	  ISPARSE_N = JEDN1
+        
+        CALL sparseassembler_getnonzero(ISPARSE_NZ)
+        CALL sparseassembler_savesparsefile()
+        CALL sparseassembler_kill()
+        
+        CALL MUMPS_INIT(ISPARSE_N, ISPARSE_NZ)
+        CALL MUMPS_READ_SPARSE_FILE(ISPARSE_NZ)        
+        CALL MUMPS_FACTOR(mumps_par)
+        CALL MUMPS_SOLUTION(SILE)
+        CALL MUMPS_END
+#endif
+      ENDIF
+
+        DO 440 I=1,jedn1
+           TT1(I)=TT1(I)+AF*SILE(I)
+440     CONTINUE
+
+C===========================================================================
+CE TRANSFER DATA FROM VECTOR TT1 TO MATRIX GNODE 
+CE AT THE END OF CURRENT TIME STEP
+C===========================================================================
+        call FILLN2(GNODE,SILE,ID,NPT)
+
+	ENDIF
+  480  CONTINUE
+      WRITE(*,*)'ITER= ',ITER
+      WRITE(*,*)'PERIOD= ',NNPER
+      WRITE(*,*)'STEP= ',KKORAK
+      WRITE(*,*)'TIME= ',VVREME
+
+      IF (METOD.EQ.1) THEN
+       CALL KONVTF(TT1,SILE,KONVV1,1,ID,ITER,NPT,EPSTR,ISRPS,6)
+       CALL KONVTF(TT1,SILE,KONVV2,2,ID,ITER,NPT,EPSTR,ISRPS,6)
+       CALL KONVTF(TT1,SILE,KONVV3,3,ID,ITER,NPT,EPSTR,ISRPS,6)
+       CALL KONVTF(TT1,SILE,KONVP,4,ID,ITER,NPT,EPSTR,ISRPS,6)
+       CALL KONVTF(TT1,SILE,KONVT,5,ID,ITER,NPT,EPSTR,ISRPS,6)
+       CALL KONVTF(TT1,SILE,KONVFI,6,ID,ITER,NPT,EPSTR,ISRPS,6)
+       IF (KONVV1*KONVV2*KONVV3*KONVP*KONVT*KONVFI.EQ.0) THEN
+c       IF (KONVV1*KONVV2*KONVV3*KONVP*KONVT.EQ.0) THEN
+        ITER=ITER+1
+        GO TO 100
+       ENDIF
+      ENDIF
+
+
+C SPECIFIC BOUNDARY CONDITION FOR EXAMPLE FOR VIENNA (ACO) NOV. 27, 2004
+
+
+      IF (IPROLAZ.EQ.0.AND.INDFL.EQ.0) THEN
+	  IPROLAZ=1
+	  GOTO 111
+	ENDIF
+
+	IF (IBOUND.EQ.1.AND.IAGAIN.EQ.1) THEN 
+C	IF (IBOUND.EQ.6.AND.IAGAIN.EQ.1) THEN 
+	CALL VIENNA (GNODE,ID,NEL,NET,NPT,NDIM,JEDN,NWK,MHT,MAXA,IIZLAZ)
+C	WRITE(IIZLAZ,*) 'GNODE'
+	 DO I=1,NPT
+	  GNODE(2,1,I)=GNODE(1,1,I)
+	  GNODE(2,2,I)=GNODE(1,2,I)
+C	WRITE(IIZLAZ,*)I,GNODE(2,1,I),GNODE(2,2,I)
+	 ENDDO
+C	WRITE(IIZLAZ,*) 'TT1'
+	DO I=1,JEDN
+	  TT1(I)=TT10(I)
+C	WRITE(IIZLAZ,*)I,TT1(I)
+	ENDDO
+C	IAGAIN=0
+	ITER=0
+	RETURN
+C	STOP
+      GOTO 100
+	ENDIF
+
+
+C FOR CALCULATION FORCES FROM FLUID ON THE WALLS
+      IF (NETIP.EQ.2)
+     &CALL FORC2D(GNODE,NEL,ID,CCORD,SKEF,
+     &TABF,ITFMAX,NBREL,TIME,KKORAK,VVREME,SPSIL,ALEVO,DESNO,SILE,ITER,
+     &NGPSIL,MAXA,IBRGT,NASLOV,GUSM,CC,AKT,IIZLAZ,AMI,
+     &INDAMI,BETA,TETAO,FB2,FB3,NUMZAD,NPT,NDIM,MAXSIL,JEDN1,NWK1,NET,
+     &NPER,NTABFT,NDES,IDPRIT,IFORM,PENALT,PRESS,NSTAC,INDAX,IUPWIN,
+     &PRES,VMESH,IALE)
+
+      IF (NETIP.EQ.3)
+     &CALL FORC3D(GNODE,ALEVO,DESNO,SILE,NEL,
+     1ID,NGPSIL,MAXA,CCORD,SKEF,PRIT,SPSIL,IBRGT,
+     &ITFMAX,TABF,GUSM,CC,AKT,NETIP,IIZLAZ,AMI,INDAMI,BETA,TETAO,FB2,
+     &FB3,NUMZAD,NPT,NDIM,MAXSIL,JEDN,NWK,NET,NDES,IDPRIT,IFORM,NPER,
+     &NTABFT,PENALT,PRES,NSTAC,VVREME,TIME,INDEL,ZADVRE,NZAD,IUPWIN,
+     &VMESH,IALE)
+
+      IF (PENALT.GT.1.D0) THEN
+       IF(NETIP.EQ.2) THEN 
+      CALL PENTPR(GNODE,NEL,CCORD,ID,TT10,PRIT,INDAX,NDIM,
+     &IDPRIT,PENALT,NUMZAD,NPT,MAXSIL,JEDN1,NWK1,NET,AMI,INDAMI,IIZLAZ,
+     &IUPWIN,GUSM,AKT)
+       ELSE IF(NETIP.EQ.3) THEN
+      CALL PENTP3(GNODE,NEL,CCORD,ID,PRIT,NET,NDIM,IDPRIT,PENALT,IIZLAZ,
+     &AMI,ISRPS)
+       ENDIF
+      ENDIF
+
+
+      CALL SPRIZL(PRIT,NET,NETIP,IIZLAZ,IBRGT,IDPRIT,PENALT)
+
+      CALL RETPRI(GNODE,INDEL,NPT,TT1,ID,NDIM,PENALT,PRIT,
+     &IDPRIT,NEL,NET,NETIP,CORD,IIZLAZ)
+
+ 777  CALL IZLLSF(GNODE,IIZLAZ,IDPRIT,ISRPS,NPT,PRES,IFORM)
+
+      IF (NPRINT.NE.0.AND.(MOD(KKORAK,NPRINT).NE.0)) RETURN 
+c======================================================================
+C Temporarly because Electrical field example     
+      IF(NETIP.EQ.2) then
+      CALL STRM2D(A,GNODE,CCORD,NEL,NDIM,NET,LMAX2,NPT,NTOTF,NASLOV,
+     &KKORAK,VVREME,INDSC,INDAX)
+	endif
+
+c======================================================================
+C      CALL streamplane(NPT,NET,GNODE,NEL,NDIM,CORD,A(LMAX),KKORAK)
+
+      IF (INDSC.EQ.1) THEN
+C       CALL BINARY(GNODE,NPT,CCORD,CORD,KKORAK)
+       CALL ASCIIF(GNODE,NPT,CCORD,CORD,KKORAK,59,NEL,NET,NDIM,VVREME,
+     &PRES)
+      ELSE
+      IF (NPRINT.EQ.0) THEN
+C	 CALL IZLLSF(GNODE,IIZLAZ,IDPRIT,ISRPS,NPT,PRES,IFORM)
+c       CALL SPSOUT(SPSIL,NETIP,IIZLAZ,NPT,ISRPS)
+	ENDIF
+	if (netip.eq.3.and.(ndim.eq.4.or.ndim.eq.10)) then 
+       call printpos(gnode,npt,nel,net,ndim,cord,penalt,id,spsil)
+	III=59
+      CALL STAGPF(GNODE,NASLOV,VVREME,KKORAK,1,NPT,III,1,NET,NEL,PRIT,
+     &CCORD,CORD,NDIM,NETIP,PENALT,IDPRIT,ISRPS,SPSIL,PRES,ID)
+	else
+	III=59
+      CALL STAGPF(GNODE,NASLOV,VVREME,KKORAK,1,NPT,III,1,NET,NEL,PRIT,
+     &CCORD,CORD,NDIM,NETIP,PENALT,IDPRIT,ISRPS,SPSIL,PRES,ID)
+      endif
+
+c SAMO ZA RAZVIJENI CILINDAR, SHEAR STRESS
+C      CALL SHELL2(NEL,NET,NETIP,NDIM,ID,CORD,NPT,PRES)
+      
+
+      ENDIF
+
+C	IF (KKORAK.EQ.1) THEN 
+C	  CLOSE (IIZLAZ)
+C	  CLOSE (59)
+C	ENDIF
+c=========T E M P O R A R L Y =========================================       
+c Only Printing for Burger's example	TEMPORARLY
+C      CALL BURGERPRINT(CCORD,GNODE,NPT,VVREME,IIZLAZ)
+c=========T E M P O R A R L Y =========================================       
+C============================================================================
+
+C	do j=0,99
+C	tm=0.d0
+C	do i=1+j*116,116+j*116
+C	do i=49,NPT,116
+C	tm=tm+gnode(2,5,i)
+C	if (id(1,i).ne.0.or.id(2,i).ne.0.or.id(3,i).ne.0) then
+C	  r=dsqrt(cord(1,i)**2+cord(2,i)**2)
+C	  v=1.d0-(r/10.e-4)**2
+C	 write(iizlaz,'(3e13.5)')cord(3,i),gnode(2,5,i),tm-gnode(2,5,i)
+C      enddo
+C	tm=tm/116.d0
+c	endif
+C	enddo
+c      stop
+
+C      CALL RESIST_VOL(GNODE,CORD,CCORD,ID,VVREME,NPT,VMESH,TIME,NSTAC,
+C     &ZADVRE,AMI,KKORAK,NEL,NDIM,ITER,NET,IDPRIT,PRIT,PRES,SPSIL,NETIP)
+C      CALL RESIST_BIF2(GNODE,CORD,CCORD,ID,VVREME,NPT,VMESH,TIME,NSTAC,
+C     &ZADVRE,AMI,KKORAK,NEL,NDIM,ITER,NET,IDPRIT,PRIT,PRES,SPSIL,NETIP,
+C     &INDEL)
+C      CALL RESIST_BIF(GNODE,CORD,CCORD,ID,VVREME,NPT,VMESH,TIME,NSTAC,
+C     &ZADVRE,AMI,KKORAK,NEL,NDIM,ITER,NET,IDPRIT,PRIT,PRES)
+C      CALL RESIST_BIF3(GNODE,CORD,CCORD,ID,VVREME,NPT,VMESH,TIME,NSTAC,
+C     &ZADVRE,AMI,KKORAK,NEL,NDIM,ITER,NET,IDPRIT,PRIT,PRES)
+C      CALL RESIST_TUBE(GNODE,CORD,CCORD,ID,VVREME,NPT,VMESH,TIME,NSTAC,
+C     &ZADVRE,AMI,KKORAK,NEL,NDIM,ITER,NET,IDPRIT,PRIT,PRES)
+
+
+      IF (PENALT.GT.1.D0) THEN
+       DO I=1,NPT
+        GNODE(2,4,I)=0.D0
+       ENDDO
+      ENDIF
+C==========================================================================
+C WRITING FORCES FOR PAK-S IN FILE 'ZFLUID'
+      IF (NPTI.GT.0) 
+     &CALL ZFLUID(A,SPSIL,NPT,NETIP,LMAX,NTOTF,IIZLAZ)
+C==========================================================================
+      RETURN
+      END
+C==========================================================================
+C=========================================================================

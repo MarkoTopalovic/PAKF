@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<VisualStudioProject ProjectCreator="Intel Fortran" Keyword="Console Application" Version="11.0" ProjectIdGuid="{239609EB-13CD-40FC-B573-825CF660D2D7}">
+	<Platforms>
+		<Platform Name="Win32"/>
+		<Platform Name="x64"/></Platforms>
+	<Configurations>
+		<Configuration Name="Debug|Win32" OutputDirectory="$(PlatformName)\$(ConfigurationName)" IntermediateDirectory="$(PlatformName)\$(ConfigurationName)" DeleteExtensionsOnClean="*.obj;*.mod;*.pdb;*.asm;*.map;*.dyn;*.dpi;*.tmp;*.log;*.ilk;*.exe;$(TargetPath)">
+				<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" DebugInformationFormat="debugEnabled" Optimization="optimizeDisabled" Preprocess="preprocessYes" AdditionalIncludeDirectories="../libseq;../MUMPS_Win_F;../SparseAssembler" PreprocessorDefinitions="pord" ModulePath="$(INTDIR)/" ObjectFile="$(INTDIR)/" Traceback="true" BoundsCheck="true" RuntimeLibrary="rtMultiThreadedDebug"/>
+				<Tool Name="VFLinkerTool" AdditionalOptions="/FORCE:MULTIPLE ../Libraries/blas_win32.lib MUMPS_Win_F.lib MUMPS_Win_C.lib SparseAssembler.lib" OutputFile="$(OUTDIR)/PAKF.exe" LinkIncremental="linkIncrementalNo" SuppressStartupBanner="true" AdditionalLibraryDirectories="$(SolutionDir)\$(PlatformName)\$(ConfigurationName)" GenerateDebugInformation="true" ProgramDatabaseFile="$(OUTDIR)/PAKF.pdb" SubSystem="subSystemConsole"/>
+				<Tool Name="VFResourceCompilerTool"/>
+				<Tool Name="VFMidlTool" SuppressStartupBanner="true" HeaderFileName="$(InputName).h" TypeLibraryName="$(IntDir)/$(InputName).tlb"/>
+				<Tool Name="VFCustomBuildTool"/>
+				<Tool Name="VFPreLinkEventTool"/>
+				<Tool Name="VFPreBuildEventTool"/>
+				<Tool Name="VFPostBuildEventTool"/>
+				<Tool Name="VFManifestTool" SuppressStartupBanner="true"/></Configuration>
+		<Configuration Name="Release|Win32" OutputDirectory="$(PlatformName)\$(ConfigurationName)" IntermediateDirectory="$(PlatformName)\$(ConfigurationName)" DeleteExtensionsOnClean="*.obj;*.mod;*.pdb;*.asm;*.map;*.dyn;*.dpi;*.tmp;*.log;*.ilk;*.exe;$(TargetPath)">
+				<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" Preprocess="preprocessYes" AdditionalIncludeDirectories="../libseq;../MUMPS_Win_F;../SparseAssembler" PreprocessorDefinitions="pord" ModulePath="$(INTDIR)/" ObjectFile="$(INTDIR)/"/>
+				<Tool Name="VFLinkerTool" AdditionalOptions="/FORCE:MULTIPLE ../Libraries/blas_win32.lib MUMPS_Win_F.lib MUMPS_Win_C.lib SparseAssembler.lib" OutputFile="$(OUTDIR)/PAKF.exe" LinkIncremental="linkIncrementalNo" SuppressStartupBanner="true" AdditionalLibraryDirectories="$(SolutionDir)\$(PlatformName)\$(ConfigurationName)" SubSystem="subSystemConsole"/>
+				<Tool Name="VFResourceCompilerTool"/>
+				<Tool Name="VFMidlTool" SuppressStartupBanner="true" HeaderFileName="$(InputName).h" TypeLibraryName="$(IntDir)/$(InputName).tlb"/>
+				<Tool Name="VFCustomBuildTool"/>
+				<Tool Name="VFPreLinkEventTool"/>
+				<Tool Name="VFPreBuildEventTool"/>
+				<Tool Name="VFPostBuildEventTool"/>
+				<Tool Name="VFManifestTool" SuppressStartupBanner="true"/></Configuration>
+		<Configuration Name="Debug|x64" DeleteExtensionsOnClean="*.obj;*.mod;*.pdb;*.asm;*.map;*.dyn;*.dpi;*.tmp;*.log;*.ilk;*.exe;$(TargetPath)">
+				<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" DebugInformationFormat="debugEnabled" Optimization="optimizeDisabled" Preprocess="preprocessYes" AdditionalIncludeDirectories="../libseq;../MUMPS_Win_F;../SparseAssembler" PreprocessorDefinitions="pord" ModulePath="$(INTDIR)/" ObjectFile="$(INTDIR)/" Traceback="true" BoundsCheck="true" RuntimeLibrary="rtMultiThreadedDebug"/>
+				<Tool Name="VFLinkerTool" AdditionalOptions="/FORCE:MULTIPLE ../Libraries/BLAS.lib MUMPS_Win_F.lib MUMPS_Win_C.lib SparseAssembler.lib" OutputFile="$(OUTDIR)/PAKF.exe" LinkIncremental="linkIncrementalNo" SuppressStartupBanner="true" AdditionalLibraryDirectories="$(SolutionDir)\$(PlatformName)\$(ConfigurationName)" GenerateDebugInformation="true" ProgramDatabaseFile="$(OUTDIR)/PAKF.pdb" SubSystem="subSystemConsole"/>
+				<Tool Name="VFResourceCompilerTool"/>
+				<Tool Name="VFMidlTool" SuppressStartupBanner="true" TargetEnvironment="midlTargetAMD64" HeaderFileName="$(InputName).h" TypeLibraryName="$(IntDir)/$(InputName).tlb"/>
+				<Tool Name="VFCustomBuildTool"/>
+				<Tool Name="VFPreLinkEventTool"/>
+				<Tool Name="VFPreBuildEventTool"/>
+				<Tool Name="VFPostBuildEventTool"/>
+				<Tool Name="VFManifestTool" SuppressStartupBanner="true"/></Configuration>
+		<Configuration Name="Release|x64" DeleteExtensionsOnClean="*.obj;*.mod;*.pdb;*.asm;*.map;*.dyn;*.dpi;*.tmp;*.log;*.ilk;*.exe;$(TargetPath)">
+				<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" Preprocess="preprocessYes" AdditionalIncludeDirectories="../libseq;../MUMPS_Win_F;../SparseAssembler" PreprocessorDefinitions="pord" ModulePath="$(INTDIR)/" ObjectFile="$(INTDIR)/" RuntimeLibrary="rtMultiThreadedDebug"/>
+				<Tool Name="VFLinkerTool" AdditionalOptions="/FORCE:MULTIPLE ../Libraries/BLAS.lib MUMPS_Win_F.lib MUMPS_Win_C.lib SparseAssembler.lib" OutputFile="$(OUTDIR)/PAKF.exe" LinkIncremental="linkIncrementalNo" SuppressStartupBanner="true" AdditionalLibraryDirectories="$(SolutionDir)\$(PlatformName)\$(ConfigurationName)" SubSystem="subSystemConsole"/>
+				<Tool Name="VFResourceCompilerTool"/>
+				<Tool Name="VFMidlTool" SuppressStartupBanner="true" TargetEnvironment="midlTargetAMD64" HeaderFileName="$(InputName).h" TypeLibraryName="$(IntDir)/$(InputName).tlb"/>
+				<Tool Name="VFCustomBuildTool"/>
+				<Tool Name="VFPreLinkEventTool"/>
+				<Tool Name="VFPreBuildEventTool"/>
+				<Tool Name="VFPostBuildEventTool"/>
+				<Tool Name="VFManifestTool" SuppressStartupBanner="true"/></Configuration></Configurations>
+	<Files>
+		<Filter Name="Header Files" Filter="fi;fd"/>
+		<Filter Name="Resource Files" Filter="rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe"/>
+		<Filter Name="Source Files" Filter="f90;for;f;fpp;ftn;def;odl;idl">
+		<File RelativePath=".\Source\acoustics2d.for"/>
+		<File RelativePath=".\Source\ang3d.for"/>
+		<File RelativePath=".\Source\Athero.for"/>
+		<File RelativePath=".\Source\Athero3D.for"/>
+		<File RelativePath=".\Source\Athero3DFitting.for"/>
+		<File RelativePath=".\Source\AtheroSun2D.for"/>
+		<File RelativePath=".\Source\cfdd3d8.for"/>
+		<File RelativePath=".\Source\checkjacob3d.for"/>
+		<File RelativePath=".\Source\coating.for"/>
+		<File RelativePath=".\Source\curzio.for"/>
+		<File RelativePath=".\Source\electr2d.for"/>
+		<File RelativePath=".\Source\expan3d.for"/>
+		<File RelativePath=".\Source\expan3dballon.for"/>
+		<File RelativePath=".\Source\fnterp1.for"/>
+		<File RelativePath=".\Source\FNTERPT.for"/>
+		<File RelativePath=".\Source\Force3D.for"/>
+		<File RelativePath=".\Source\formpr.for"/>
+		<File RelativePath=".\Source\genertube.for"/>
+		<File RelativePath=".\Source\intermoving.for"/>
+		<File RelativePath=".\Source\jact10node.for"/>
+		<File RelativePath=".\Source\jact11node.for"/>
+		<File RelativePath=".\Source\jact4node.for"/>
+		<File RelativePath=".\Source\jact5node.for"/>
+		<File RelativePath=".\Source\jact8nodeTetra.for"/>
+		<File RelativePath=".\Source\jactsurf4node.for"/>
+		<File RelativePath=".\Source\jactsurf5node.for"/>
+		<File RelativePath=".\Source\jactsurf8nodetetra.for"/>
+		<File RelativePath=".\Source\JACTT.for"/>
+		<File RelativePath=".\Source\mixed3d6vp.for"/>
+		<File RelativePath=".\Source\Mixed3D8node.for"/>
+		<File RelativePath=".\Source\Mixed3D8nodePoisson.for"/>
+		<File RelativePath=".\Source\mixed3d8vp.for"/>
+		<File RelativePath=".\Source\mixed3d8vptime.for"/>
+		<File RelativePath=".\Source\Mixed3DV8P1.for"/>
+		<File RelativePath=".\Source\mumps.for">
+			<FileConfiguration Name="Debug|x64">
+				<Tool Name="VFFortranCompilerTool" DebugInformationFormat="debugEnabled" Optimization="optimizeDisabled"/></FileConfiguration></File>
+		<File RelativePath=".\Source\mumpscomm.for"/>
+		<File RelativePath=".\Source\namasa.for"/>
+		<File RelativePath=".\Source\pakf0.for"/>
+		<File RelativePath=".\Source\pakf1.for"/>
+		<File RelativePath=".\Source\pakf10.for"/>
+		<File RelativePath=".\Source\pakf11.for"/>
+		<File RelativePath=".\Source\pakf12.for"/>
+		<File RelativePath=".\Source\pakf13.for"/>
+		<File RelativePath=".\Source\pakf2.for"/>
+		<File RelativePath=".\Source\pakf3.for"/>
+		<File RelativePath=".\Source\pakf4.for"/>
+		<File RelativePath=".\Source\pakf5.for"/>
+		<File RelativePath=".\Source\pakf6.for"/>
+		<File RelativePath=".\Source\pakf7.for"/>
+		<File RelativePath=".\Source\pakf8.for"/>
+		<File RelativePath=".\Source\pakf9.for"/>
+		<File RelativePath=".\Source\PAKF_OSI.for"/>
+		<File RelativePath=".\Source\pakfL.for"/>
+		<File RelativePath=".\Source\pakfn.for"/>
+		<File RelativePath=".\Source\pakfs.for"/>
+		<File RelativePath=".\Source\pakfT.for"/>
+		<File RelativePath=".\Source\pakfvtk.for"/>
+		<File RelativePath=".\Source\PENTP3T.FOR"/>
+		<File RelativePath=".\Source\printpos.for"/>
+		<File RelativePath=".\Source\PRIT2DT.FOR"/>
+		<File RelativePath=".\Source\racu2d1.for"/>
+		<File RelativePath=".\Source\rightpr.for"/>
+		<File RelativePath=".\Source\Servis.f90"/>
+		<File RelativePath=".\Source\shell.for"/>
+		<File RelativePath=".\Source\streamplane.for"/>
+		<File RelativePath=".\Source\surfjact10.for"/>
+		<File RelativePath=".\Source\tetgen.for"/>
+		<File RelativePath=".\Source\tetra.for"/>
+		<File RelativePath=".\Source\tetra3d4_10nodes.for"/>
+		<File RelativePath=".\Source\tetra3d4_15nodes.for"/>
+		<File RelativePath=".\Source\tetra_seg.for"/>
+		<File RelativePath=".\Source\tetra_seg10_4.for"/>
+		<File RelativePath=".\Source\tetra_seg_elem.for"/>
+		<File RelativePath=".\Source\tetra_shear_stress.for"/>
+		<File RelativePath=".\Source\vienna.for"/>
+		<File RelativePath=".\Source\xerbla.for"/></Filter></Files>
+	<Globals/></VisualStudioProject>

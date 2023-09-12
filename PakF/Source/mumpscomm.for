@@ -1,0 +1,39 @@
+C SOLVER MUMPS poziv
+	SUBROUTINE SOLVER (SILE, JEDN)
+	IMPLICIT NONE
+        DOUBLE PRECISION SILE (*)
+	INTEGER JEDN
+	INTEGER I, IFILE, PFILE
+	CHARACTER* 300 CMDLINE
+	CHARACTER*55 JOBID
+	IFILE = 57
+C Citanje params.txt, $JOBID treci broj
+	PFILE = 61
+	OPEN (PFILE, FILE='params.txt')
+	READ(PFILE,*) JOBID
+	READ(PFILE,*) JOBID
+	READ(PFILE,*) JOBID
+	CLOSE (PFILE)
+C Kraj $JOBID
+
+
+       CMDLINE = "./mumps_convert"
+c       CALL SYSTEM(CMDLINE)
+ 
+
+c        CMDLINE = "mpiexec solver"
+c        CMDLINE = "mpiexec elemental"
+        CMDLINE = "PakF_Elemental"
+
+
+	CALL SYSTEM(CMDLINE)
+
+
+c	OPEN (IFILE, FILE='/tmp/RESENJE_'//JOBID//'.OUT',FORM='BINARY')
+	OPEN (IFILE, FILE='RESENJE.OUT',FORM='BINARY')
+	DO I = 1, JEDN
+	READ(IFILE) SILE(I)
+	END DO
+	CLOSE (IFILE)
+
+	END
